@@ -1,6 +1,5 @@
 package org.anddev.andengine.util;
 
-import org.anddev.andengine.BuildConfig;
 import org.anddev.andengine.util.constants.Constants;
 
 import android.util.Log;
@@ -60,53 +59,44 @@ public class Debug implements Constants {
 	// ===========================================================
 
 	public static void v(final String pMessage) {
-		if(!BuildConfig.DEBUG) return;
 		Debug.v(pMessage, null);
 	}
 
 	public static void v(final String pMessage, final Throwable pThrowable) {
-		if(!BuildConfig.DEBUG) return;
 		if(sDebugLevel.isSameOrLessThan(DebugLevel.VERBOSE)) {
 			Log.v(sDebugTag, pMessage, pThrowable);
 		}
 	}
 
 	public static void d(final String pMessage) {
-		if(!BuildConfig.DEBUG) return;
 		Debug.d(pMessage, null);
 	}
 
 	public static void d(final String pMessage, final Throwable pThrowable) {
-		if(!BuildConfig.DEBUG) return;
 		if(sDebugLevel.isSameOrLessThan(DebugLevel.DEBUG)) {
 			Log.d(sDebugTag, pMessage, pThrowable);
 		}
 	}
 
 	public static void i(final String pMessage) {
-		if(!BuildConfig.DEBUG) return;
 		Debug.i(pMessage, null);
 	}
 
 	public static void i(final String pMessage, final Throwable pThrowable) {
-		if(!BuildConfig.DEBUG) return;
 		if(sDebugLevel.isSameOrLessThan(DebugLevel.INFO)) {
 			Log.i(sDebugTag, pMessage, pThrowable);
 		}
 	}
 
 	public static void w(final String pMessage) {
-		if(!BuildConfig.DEBUG) return;
 		Debug.w(pMessage, null);
 	}
 
 	public static void w(final Throwable pThrowable) {
-		if(!BuildConfig.DEBUG) return;
 		Debug.w("", pThrowable);
 	}
 
 	public static void w(final String pMessage, final Throwable pThrowable) {
-		if(!BuildConfig.DEBUG) return;
 		if(sDebugLevel.isSameOrLessThan(DebugLevel.WARNING)) {
 			if(pThrowable == null) {
 				Log.w(sDebugTag, pMessage, new Exception());
@@ -117,17 +107,14 @@ public class Debug implements Constants {
 	}
 
 	public static void e(final String pMessage) {
-		if(!BuildConfig.DEBUG) return;
 		Debug.e(pMessage, null);
 	}
 
 	public static void e(final Throwable pThrowable) {
-		if(!BuildConfig.DEBUG) return;
 		Debug.e(sDebugTag, pThrowable);
 	}
 
 	public static void e(final String pMessage, final Throwable pThrowable) {
-		if(!BuildConfig.DEBUG) return;
 		if(sDebugLevel.isSameOrLessThan(DebugLevel.ERROR)) {
 			if(pThrowable == null) {
 				Log.e(sDebugTag, pMessage, new Exception());

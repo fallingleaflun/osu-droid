@@ -2,14 +2,14 @@ package com.edlplan.ui
 
 import android.app.Activity
 import androidx.appcompat.app.AppCompatActivity
-import androidx.fragment.app.Fragment
 import androidx.fragment.app.FragmentManager
-import com.edlplan.ui.fragment.BackPressListener
+import com.edlplan.ui.fragment.BaseFragment
 import java.util.*
 
-object ActivityOverlay {
+object ActivityOverlay {//tzl:将类的声明和定义该类的单例对象结合在一起
+    //tzl:这个类应该就是封装了管理Fragment重叠显示相关方法的工具类
     private var fragmentManager: FragmentManager? = null
-    private val displayingOverlay: MutableList<Fragment> = ArrayList()
+    private val displayingOverlay: MutableList<BaseFragment> = ArrayList()
     private var context: Activity? = null
     private var containerId = 0
     @JvmStatic
@@ -26,17 +26,14 @@ object ActivityOverlay {
     @Synchronized
     fun onBackPress(): Boolean {
         if (fragmentManager != null && displayingOverlay.size > 0) {
-            val overlay: Fragment? = displayingOverlay[displayingOverlay.size - 1]
-            if(overlay is BackPressListener) {
-                overlay.callDismissOnBackPress()
-            }
+            displayingOverlay[displayingOverlay.size - 1].callDismissOnBackPress()
             return true
         }
         return false
     }
 
     @Synchronized
-    fun dismissOverlay(fragment: Fragment) {
+    fun dismissOverlay(fragment: BaseFragment) {
         if (fragmentManager != null) {
             if (displayingOverlay.contains(fragment)) {
                 displayingOverlay.remove(fragment)
@@ -46,13 +43,13 @@ object ActivityOverlay {
     }
 
     @Synchronized
-    fun addOverlay(fragment: Fragment, tag: String?) {
+    fun addOverlay(fragment: BaseFragment, tag: String?) {
         if (fragmentManager != null) {
-            if (fragment.isAdded()) {
+            if (fragment.isAdded()) {//tzl:这些线程同步的判断根本不知道为什么要这样写
                 return
             }
-            if (displayingOverlay.contains(fragment) || fragmentManager!!.findFragmentByTag(tag) != null) {
-                displayingOverlay.remove(fragment)
+            if (displayingOverlay.contains(fragment) || fragmentManager!!.findFragmentByTag(tag) != null) {//tzl: 已存在就更新
+                displayingOverlay.remove(fragment)//tzl:为什么在列表remove之后不用再添加进列表？
                 fragmentManager!!.beginTransaction()
                         .remove(fragment)
                         .add(containerId, fragment, tag)

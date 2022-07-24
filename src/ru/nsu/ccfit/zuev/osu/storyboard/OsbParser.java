@@ -2,10 +2,10 @@ package ru.nsu.ccfit.zuev.osu.storyboard;
 
 import com.dgsrz.bancho.ui.StoryBoardTestActivity;
 
-import okio.BufferedSource;
-import okio.Okio;
-
+import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileFilter;
+import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -14,8 +14,6 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-
-import ru.nsu.ccfit.zuev.osu.helper.FileUtils;
 
 /**
  * Created by dgsrz on 16/9/16.
@@ -50,27 +48,31 @@ public class OsbParser {
     public void parse(String path) throws IOException {
         File osuFile = new File(path);
         loadBeatmap(osuFile);
-        File[] files = FileUtils.listFiles(osuFile.getParentFile(), ".osb");
+        File[] files = osuFile.getParentFile().listFiles(new FileFilter() {
+            @Override
+            public boolean accept(File pathname) {
+                return pathname.isFile() && pathname.getName().toLowerCase().endsWith(".osb");
+            }
+        });
         if (files.length > 0) {
-            BufferedSource source = Okio.buffer(Okio.source(files[0]));
-
+            BufferedReader buff = new BufferedReader(new FileReader(files[0]));
             Pattern pattern;
             Matcher matcher;
             String line;
-            while ((line = source.readUtf8Line()) != null) {
+            while ((line = buff.readLine()) != null) {
                 pattern = Pattern.compile("\\[(\\w+)]");
                 matcher = pattern.matcher(line.trim());
 
                 if (matcher.find()) {
                     String title = matcher.group(1);
                     if (title.equals("Events")) {
-                        parseObjects(source);
+                        parseObjects(buff);
                     } else if (title.equals("Variables")) {
-                        parseVariables(source);
+                        parseVariables(buff);
                     }
                 }
             }
-            source.close();
+            buff.close();
         }
         Collections.sort(hitSounds, new Comparator<HitSound>() {
             @Override
@@ -86,8 +88,8 @@ public class OsbParser {
         });
     }
 
-    private void parseObjects(BufferedSource source) throws IOException {
-        line = source.readUtf8Line();
+    private void parseObjects(BufferedReader buff) throws IOException {
+        line = buff.readLine();
         while (line != null) {
             if (line.equals("")) {
                 break;
@@ -115,7 +117,7 @@ public class OsbParser {
                 filePath = filePath.replaceAll("\"", "");
                 float x = Float.parseFloat(info[4]);
                 float y = Float.parseFloat(info[5]);
-                ArrayList<OsuEvent> events = parseEvents(source);
+                ArrayList<OsuEvent> events = parseEvents(buff);
                 OsuSprite sprite = new OsuSprite(x, y, layer, origin, filePath, events, ZIndex++);
                 sprite.setDebugLine(line);
                 sprites.add(sprite);
@@ -147,18 +149,18 @@ public class OsbParser {
                 if (info.length == 9) {
                     loopType = info[8];
                 }
-                ArrayList<OsuEvent> events = parseEvents(source);
+                ArrayList<OsuEvent> events = parseEvents(buff);
                 sprites.add(new OsuSprite(x, y, layer, origin, filePath, events, ZIndex++, count, delay, loopType));
             } else {
-                line = source.readUtf8Line();
+                line = buff.readLine();
             }
 
         }
     }
 
-    private ArrayList<OsuEvent> parseEvents(BufferedSource source) throws IOException {
+    private ArrayList<OsuEvent> parseEvents(BufferedReader buff) throws IOException {
         ArrayList<OsuEvent> eventList = new ArrayList<OsuEvent>();
-        line = source.readUtf8Line();
+        line = buff.readLine();
         if (line.startsWith("_")) {
             line = line.replaceAll("_", " ");
         }
@@ -177,7 +179,7 @@ public class OsbParser {
             if (command == Command.L) {
                 currentOsuEvent.startTime = Long.parseLong(info[1]);
                 currentOsuEvent.loopCount = Integer.parseInt(info[2]);
-                currentOsuEvent.subEvents = parseSubEvents(source);
+                currentOsuEvent.subEvents = parseSubEvents(buff);
                 if (currentOsuEvent.subEvents.size() > 0) {//real start time
                     currentOsuEvent.startTime = currentOsuEvent.subEvents.get(0).startTime + currentOsuEvent.startTime;
                 }
@@ -198,7 +200,7 @@ public class OsbParser {
                 } else if (currentOsuEvent.triggerType.equals("HitSoundClap")) {
                     soundType = 8;
                 }
-                currentOsuEvent.subEvents = parseSubEvents(source);
+                currentOsuEvent.subEvents = parseSubEvents(buff);
                 for (HitSound hitSound : hitSounds) {//real start time
                     if (hitSound.time >= currentOsuEvent.startTime && (hitSound.soundType & soundType) == soundType) {
                         currentOsuEvent.startTime = hitSound.time;
@@ -258,7 +260,7 @@ public class OsbParser {
                         break;
                 }
                 currentOsuEvent.params = params;
-                line = source.readUtf8Line();
+                line = buff.readLine();
                 if (line.startsWith("_")) {
                     line = line.replaceAll("_", " ");
                 }
@@ -275,9 +277,9 @@ public class OsbParser {
         return eventList;
     }
 
-    private ArrayList<OsuEvent> parseSubEvents(BufferedSource source) throws IOException {
+    private ArrayList<OsuEvent> parseSubEvents(BufferedReader buff) throws IOException {
         ArrayList<OsuEvent> subOsuEventList = new ArrayList<OsuEvent>();
-        while ((line = source.readUtf8Line()) != null && (line.startsWith("  ") || line.startsWith("__"))) {
+        while ((line = buff.readLine()) != null && (line.startsWith("  ") || line.startsWith("__"))) {
             line = line.replaceAll("_", " ").trim();
             for (String s : variablesMap.keySet()) {
                 if (line.contains(s)) {
@@ -340,7 +342,7 @@ public class OsbParser {
                     break;
                 case T:
                 case L:
-                    parseSubEvents(source);
+                    parseSubEvents(buff);
                     break;
             }
             subEvent.params = params;
@@ -351,9 +353,9 @@ public class OsbParser {
 
 
     public void loadBeatmap(File file) throws IOException {
-        BufferedSource source = Okio.buffer(Okio.source(file));
+        BufferedReader buff = new BufferedReader(new FileReader(file));
 
-        String header = source.readUtf8Line().trim();
+        String header = buff.readLine().trim();
         Pattern pattern;
         Matcher matcher;
 //        Pattern pattern = Pattern.compile("osu file format v(\\d+)");
@@ -365,31 +367,31 @@ public class OsbParser {
 //        mVersion = Integer.parseInt(matcher.group(1));
 
         String line;
-        while ((line = source.readUtf8Line()) != null) {
+        while ((line = buff.readLine()) != null) {
             pattern = Pattern.compile("\\[(\\w+)]");
             matcher = pattern.matcher(line.trim());
 
             if (matcher.find()) {
                 String title = matcher.group(1);
                 if (title.equals("General")) {
-                    parseGeneral(source);
+                    parseGeneral(buff);
                 } else if (title.equals("Difficulty")) {
-                    parseDifficulty(source);
+                    parseDifficulty(buff);
                 } else if (title.equals("Events")) {
-                    parseEvent(source);
+                    parseEvent(buff);
                 } else if (title.equals("TimingPoints")) {
-                    parseTimingPoints(source);
+                    parseTimingPoints(buff);
                 } else if (title.equals("HitObjects")) {
-                    parseHitObject(source);
+                    parseHitObject(buff);
                 }
             }
         }
-        source.close();
+        buff.close();
     }
 
-    private void parseGeneral(BufferedSource source) throws IOException {
+    private void parseGeneral(BufferedReader buff) throws IOException {
         String line;
-        while ((line = source.readUtf8Line()) != null) {
+        while ((line = buff.readLine()) != null) {
             line = line.trim();
             if (line.equals("")) return;
             String[] values = line.split(":");
@@ -403,10 +405,10 @@ public class OsbParser {
         }
     }
 
-    private void parseEvent(BufferedSource source) throws IOException {
+    private void parseEvent(BufferedReader buff) throws IOException {
         String line;
         String info[];
-        while ((line = source.readUtf8Line()) != null) {
+        while ((line = buff.readLine()) != null) {
             line = line.trim();
             if (line.equals("")) return;
 
@@ -416,16 +418,16 @@ public class OsbParser {
                 Matcher matcher = pattern.matcher(line);
                 if (info[0].equals("0") && matcher.find()) {
                     StoryBoardTestActivity.activity.mBackground = matcher.group(0);
-                    parseObjects(source);
+                    parseObjects(buff);
                     break;
                 }
             }
         }
     }
 
-    private void parseVariables(BufferedSource source) throws IOException {
+    private void parseVariables(BufferedReader buff) throws IOException {
         String line;
-        while ((line = source.readUtf8Line()) != null) {
+        while ((line = buff.readLine()) != null) {
             line = line.trim();
             if (line.equals("")) return;
             String[] values = line.split("=");
@@ -435,9 +437,9 @@ public class OsbParser {
         }
     }
 
-    private void parseDifficulty(BufferedSource source) throws IOException {
+    private void parseDifficulty(BufferedReader buff) throws IOException {
         String line;
-        while ((line = source.readUtf8Line()) != null) {
+        while ((line = buff.readLine()) != null) {
             line = line.trim();
             if (line.equals("")) return;
             String[] values = line.split(":");
@@ -447,10 +449,10 @@ public class OsbParser {
         }
     }
 
-    private void parseTimingPoints(BufferedSource source) throws IOException {
+    private void parseTimingPoints(BufferedReader buff) throws IOException {
         String line;
         float lastLengthPerBeat = -100;
-        while ((line = source.readUtf8Line()) != null) {
+        while ((line = buff.readLine()) != null) {
             line = line.trim();
             if (line.equals("")) return;
             String[] values = line.split(",");
@@ -466,9 +468,9 @@ public class OsbParser {
         }
     }
 
-    private void parseHitObject(BufferedSource source) throws IOException {
+    private void parseHitObject(BufferedReader buff) throws IOException {
         String line;
-        while ((line = source.readUtf8Line()) != null) {
+        while ((line = buff.readLine()) != null) {
             line = line.trim();
             if (line.equals("")) return;
             String[] values = line.split(",");

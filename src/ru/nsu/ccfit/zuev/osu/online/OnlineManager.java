@@ -2,36 +2,40 @@ package ru.nsu.ccfit.zuev.osu.online;
 
 import android.content.Context;
 import android.graphics.BitmapFactory;
-import android.os.Bundle;
 import android.util.Log;
 
-import com.google.firebase.analytics.FirebaseAnalytics;
-
-import okhttp3.OkHttpClient;
+import com.dgsrz.bancho.security.SecurityUtils;
+import com.luluteam.itestlib.apm.test.tool.HttpProxy;
 
 import org.anddev.andengine.opengl.texture.region.TextureRegion;
 import org.anddev.andengine.util.Debug;
+import org.apache.http.HttpEntity;
+import org.apache.http.HttpResponse;
+import org.apache.http.client.ClientProtocolException;
+import org.apache.http.client.HttpClient;
+import org.apache.http.client.methods.HttpGet;
+import org.apache.http.impl.client.DefaultHttpClient;
+import org.apache.http.params.BasicHttpParams;
+import org.apache.http.params.HttpParams;
+import org.apache.http.params.HttpProtocolParams;
 
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.ArrayList;
 
 import ru.nsu.ccfit.zuev.osu.BeatmapInfo;
 import ru.nsu.ccfit.zuev.osu.Config;
-import ru.nsu.ccfit.zuev.osu.GlobalManager;
-import ru.nsu.ccfit.zuev.osu.MainActivity;
 import ru.nsu.ccfit.zuev.osu.ResourceManager;
 import ru.nsu.ccfit.zuev.osu.TrackInfo;
 import ru.nsu.ccfit.zuev.osu.helper.MD5Calcuator;
 import ru.nsu.ccfit.zuev.osu.online.PostBuilder.RequestException;
 
 public class OnlineManager {
-    public static final String hostname = "osudroid.moe";
-    public static final String endpoint = "https://" + hostname + "/api/";
+    private static final String host = "http://ops.dgsrz.com/api/";
     private static final String onlineVersion = "29";
-
-    public static final OkHttpClient client = new OkHttpClient();
-
+    public static HttpGet get;
     private static OnlineManager instance = null;
     private Context context;
     private String failMessage = "";
@@ -59,7 +63,7 @@ public class OnlineManager {
     }
 
     public static String getReplayURL(int playID) {
-        return endpoint + "upload/" + playID + ".odr";
+        return host + "upload/" + playID + ".odr";
     }
 
     public void Init(Context context) {
@@ -68,6 +72,7 @@ public class OnlineManager {
         this.password = Config.getOnlinePassword();
         this.deviceID = Config.getOnlineDeviceID();
         this.context = context;
+        Log.i("setDeviceToken", SecurityUtils.getDeviceId(context));
     }
 
     private ArrayList<String> sendRequest(PostBuilder post, String url) throws OnlineManagerException {
@@ -94,8 +99,7 @@ public class OnlineManager {
             return null;
         }
 
-        if (!response.get(0).equals("SUCCESS")) {
-            Debug.i("sendRequest response code:  " + response.get(0));
+        if (response.get(0).equals("SUCCESS") == false) {
             if (response.size() >= 2) {
                 failMessage = response.get(1);
             } else
@@ -125,7 +129,7 @@ public class OnlineManager {
         post.addParam("password", MD5Calcuator.getStringMD5(password + "taikotaiko"));
         post.addParam("version", onlineVersion);
 
-        ArrayList<String> response = sendRequest(post, endpoint + "login.php");
+        ArrayList<String> response = sendRequest(post, host + "login.php");
 
         if (response == null) {
             return false;
@@ -152,11 +156,6 @@ public class OnlineManager {
             avatarURL = "";
         }
 
-        Bundle bParams = new Bundle();
-        bParams.putString(FirebaseAnalytics.Param.METHOD, "ingame");
-        GlobalManager.getInstance().getMainActivity().getAnalytics().logEvent(FirebaseAnalytics.Event.LOGIN,
-            bParams);
-
         return true;
     }
 
@@ -176,12 +175,7 @@ public class OnlineManager {
         post.addParam("email", email);
         post.addParam("deviceID", deviceID);
 
-        ArrayList<String> response = sendRequest(post, endpoint + "register.php");
-
-        Bundle params = new Bundle();
-        params.putString(FirebaseAnalytics.Param.METHOD, "ingame");
-        GlobalManager.getInstance().getMainActivity().getAnalytics().logEvent(FirebaseAnalytics.Event.SIGN_UP,
-            params);
+        ArrayList<String> response = sendRequest(post, host + "register.php");
 
         return (response != null);
     }
@@ -212,7 +206,7 @@ public class OnlineManager {
         if (osuID != null)
             post.addParam("songID", osuID);
 
-        ArrayList<String> response = sendRequest(post, endpoint + "submit.php");
+        ArrayList<String> response = sendRequest(post, host + "submit.php");
 
         if (response == null) {
             if (failMessage.equals("Cannot log in") && stayOnline) {
@@ -255,7 +249,7 @@ public class OnlineManager {
         post.addParam("playID", playID);
         post.addParam("data", data);
 
-        ArrayList<String> response = sendRequest(post, endpoint + "submit.php");
+        ArrayList<String> response = sendRequest(post, host + "submit.php");
 
         if (response == null) {
             return false;
@@ -294,7 +288,7 @@ public class OnlineManager {
         post.addParam("filename", trackFile.getName());
         post.addParam("hash", hash);
 
-        ArrayList<String> response = sendRequest(post, endpoint + "getrank.php");
+        ArrayList<String> response = sendRequest(post, host + "getrank.php");
 
         if (response == null) {
             return new ArrayList<String>();
@@ -312,36 +306,85 @@ public class OnlineManager {
     public boolean loadAvatarToTextureManager(String avatarURL, String userName) {
         if (avatarURL == null || avatarURL.length() == 0) return false;
 
-        String filename = MD5Calcuator.getStringMD5(avatarURL + userName);
+        String filename = MD5Calcuator.getStringMD5(avatarURL) +
+                avatarURL.substring(avatarURL.lastIndexOf('.'));
         Debug.i("Loading avatar from " + avatarURL);
         Debug.i("filename = " + filename);
-        File picfile = new File(Config.getCachePath(), filename);
+        final File picfile = new File(Config.getCachePath(), filename);
+        if (picfile.exists() && picfile.length() != 0) {
 
-        if(!picfile.exists()) {
-            OnlineFileOperator.downloadFile(avatarURL, picfile.getAbsolutePath());
-        }else if(picfile.exists() && picfile.length() < 1) {
-            picfile.delete();
-            OnlineFileOperator.downloadFile(avatarURL, picfile.getAbsolutePath());
-        }
-        int imageWidth = 0, imageHeight = 0;
-        boolean fileAvailable = true;
-
-        try {
-            BitmapFactory.Options options = new BitmapFactory.Options();
-            options.inJustDecodeBounds = true;
-            imageWidth = BitmapFactory.decodeFile(picfile.getPath()).getWidth();
-            imageHeight = BitmapFactory.decodeFile(picfile.getPath()).getHeight();
-            options.inJustDecodeBounds = false;
-            options = null;
-        } catch (NullPointerException e) {
-            fileAvailable = false;
-        }
-        if (fileAvailable && (imageWidth * imageHeight) > 0) {
-            //头像已经缓存好在本地
-            ResourceManager.getInstance().loadHighQualityFile(userName, picfile);
-            if (ResourceManager.getInstance().getTextureIfLoaded(userName) != null) {
-                return true;
+            //检测缓存头像的有效性
+            boolean fileAvabile = true;
+            BitmapFactory.Options options;
+            int h = 0, w = 0;
+            try {
+                options = new BitmapFactory.Options();
+                options.inJustDecodeBounds = true;
+                h = BitmapFactory.decodeFile(picfile.getPath()).getHeight();
+                w = BitmapFactory.decodeFile(picfile.getPath()).getWidth();
+                options.inJustDecodeBounds = false;
+                options = null;
+            } catch (NullPointerException e) {
+                fileAvabile = false;
             }
+            if (fileAvabile && (h * w) > 0) {
+                //头像已经缓存好在本地
+                ResourceManager.getInstance().loadHighQualityFile(userName, picfile);
+                if (ResourceManager.getInstance().getTextureIfLoaded(userName) != null) {
+                    return true;
+                }
+            }
+        }
+        try {
+            if (picfile.exists()) {
+
+                //删除之前大小为 0 的无效头像文件
+                picfile.delete();
+            }
+            //从网络读取头像
+            File avatarDir = picfile.getParentFile();
+            if (!avatarDir.exists()) {
+                avatarDir.mkdirs();
+            }
+            FileOutputStream outStream = new FileOutputStream(picfile);
+
+            HttpParams params = new BasicHttpParams();
+            HttpProtocolParams.setUserAgent(params, "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/46.0.2486.0 Safari/537.36");
+
+            HttpClient client = new DefaultHttpClient(params);
+            get = new HttpGet(avatarURL);
+            HttpResponse response;
+
+            response = client.execute(get);
+            HttpEntity entity = response.getEntity();
+            InputStream is = entity.getContent();
+            if (is != null) {
+                byte[] buf = new byte[1024];
+                int ch = -1;
+
+                while ((ch = is.read(buf)) > 0) {
+                    outStream.write(buf, 0, ch);
+                }
+            } else {
+                return false;
+            }
+            outStream.flush();
+            outStream.close();
+            is.close();
+            if (picfile.exists() && picfile.length() > 0) {
+                //Loading texture
+                ResourceManager.getInstance().loadHighQualityFile(userName, picfile);
+                final TextureRegion tex = ResourceManager.getInstance()
+                        .getTextureIfLoaded(userName);
+                if (tex != null) {
+                    return true;
+                }
+            }
+        } catch (ClientProtocolException e) {
+            Debug.e("ClientProtocolException " + e.getMessage(), e);
+        } catch (IOException e) {
+            Debug.e("IOException " + e.getMessage(), e);
+            return false;
         }
 
         Debug.i("Success!");
@@ -351,14 +394,14 @@ public class OnlineManager {
     public void sendReplay(String filename) {
         if (replayID <= 0) return;
         Debug.i("Sending replay '" + filename + "' for id = " + replayID);
-        OnlineFileOperator.sendFile(endpoint + "upload.php", filename, String.valueOf(replayID));
+        OnlineFileOperator.sendFile(host + "upload.php?replayID=" + replayID + "&ssid=" + ssid, filename);
     }
 
     public String getScorePack(int playid) throws OnlineManagerException {
         PostBuilder post = new PostBuilder();
         post.addParam("playID", String.valueOf(playid));
 
-        ArrayList<String> response = sendRequest(post, endpoint + "gettop.php");
+        ArrayList<String> response = sendRequest(post, host + "gettop.php");
 
         if (response == null || response.size() < 2) {
             return "";

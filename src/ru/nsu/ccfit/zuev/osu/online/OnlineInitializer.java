@@ -5,14 +5,14 @@ import android.app.Dialog;
 import android.app.ProgressDialog;
 import android.content.SharedPreferences;
 import android.content.SharedPreferences.Editor;
+import android.preference.PreferenceManager;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
 
-import androidx.preference.PreferenceManager;
+import com.dgsrz.bancho.security.SecurityUtils;
 
-import ru.nsu.ccfit.zuev.osu.Config;
 import ru.nsu.ccfit.zuev.osu.ToastLogger;
 import ru.nsu.ccfit.zuev.osu.async.AsyncTaskLoader;
 import ru.nsu.ccfit.zuev.osu.async.OsuAsyncCallback;
@@ -37,6 +37,8 @@ public class OnlineInitializer implements View.OnClickListener {
         if (btn != null) btn.setOnClickListener(this);
         btn = (Button) registerDialog.findViewById(R.id.cancel_btn);
         if (btn != null) btn.setOnClickListener(new View.OnClickListener() {
+
+
             public void onClick(View v) {
                 registerDialog.dismiss();
             }
@@ -88,7 +90,7 @@ public class OnlineInitializer implements View.OnClickListener {
 
                 try {
                     success = OnlineManager.getInstance().register(username, password, email,
-                            Config.getOnlineDeviceID());
+                            SecurityUtils.getDeviceId(activity));
                 } catch (OnlineManagerException e) {
                     resultMessage = e.getMessage();
                     ToastLogger.showText(resultMessage, true);
@@ -101,6 +103,8 @@ public class OnlineInitializer implements View.OnClickListener {
 
             public void onComplete() {
                 activity.runOnUiThread(new Runnable() {
+
+
                     public void run() {
                         pdialog.dismiss();
                         if (success)

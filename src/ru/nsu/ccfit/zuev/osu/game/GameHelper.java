@@ -14,7 +14,7 @@ import java.util.Random;
 import ru.nsu.ccfit.zuev.osu.Config;
 import ru.nsu.ccfit.zuev.osu.Constants;
 import ru.nsu.ccfit.zuev.osu.RGBColor;
-import ru.nsu.ccfit.zuev.skins.OsuSkin;
+import ru.nsu.ccfit.zuev.osu.SkinJson;
 import ru.nsu.ccfit.zuev.osu.Utils;
 import ru.nsu.ccfit.zuev.osu.helper.DifficultyHelper;
 import ru.nsu.ccfit.zuev.osu.polygon.Spline;
@@ -167,9 +167,9 @@ public class GameHelper {
         int index = 0;
 
         final ArrayList<Float> ts = new ArrayList<Float>();
-        ts.add(0f);
-        ts.add(0.5f);
-        ts.add(1F);
+        ts.add(new Float(0));
+        ts.add(new Float(0.5f));
+        ts.add(new Float(1));
         float step2 = Constants.SLIDER_STEP * scale;
 //		if (Config.isLowpolySliders() == false) {
 //			step2 = Constants.HIGH_SLIDER_STEP * scale;
@@ -276,7 +276,7 @@ public class GameHelper {
         if (path.points.size() == 1) {
             path.points.add(new PointF(path.points.get(0).x,
                     path.points.get(0).y));
-            path.length.add(0f);
+            path.length.add(new Float(0));
         }
 
         return path;
@@ -433,7 +433,7 @@ public class GameHelper {
     }
 
     public static boolean isKiai() {
-        if (OsuSkin.get().isDisableKiai()) return false;
+        if (SkinJson.get().isDisableKiai()) return false;
         return isKiai;
     }
 

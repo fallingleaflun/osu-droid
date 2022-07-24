@@ -35,7 +35,7 @@ public class ModernSpinner extends Spinner {
 
     private GameObjectListener listener;
     private Scene scene;
-    public PointF center;
+    private PointF center;
     private float needRotations;
     private int fullRotations = 0;
     private float rotations = 0;
@@ -157,12 +157,6 @@ public class ModernSpinner extends Spinner {
             dfill = 5 * 4 * dt;
             degree = (rotations + dfill / 4f) * 360;
             top.setRotation(degree);
-            //auto时，FL光圈绕中心旋转
-            if (GameHelper.isAutopilotMod() || GameHelper.isAuto()) {
-                float pX = center.x + 50 * (float) Math.sin(degree);
-                float pY = center.y + 50 * (float) Math.cos(degree);
-                listener.updateAutoBasedPos(pX, pY);
-            }
             // bottom.setRotation(-degree);
         }
         rotations += dfill / 4f;
@@ -205,7 +199,7 @@ public class ModernSpinner extends Spinner {
             }
         } else if (Math.abs(rotations) > 1) {
             rotations -= 1 * Math.signum(rotations);
-            if (replayObjectData == null || replayObjectData.accuracy / 4 > fullRotations) {
+            if (replayData == null || replayData.accuracy / 4 > fullRotations) {
                 fullRotations++;
                 stat.registerSpinnerHit();
                 float rate = 0.375f;
@@ -236,12 +230,12 @@ public class ModernSpinner extends Spinner {
         }
         listener.removeObject(ModernSpinner.this);
         int score = 0;
-        if (replayObjectData != null) {
-            if (fullRotations < replayObjectData.accuracy / 4)
-                fullRotations = replayObjectData.accuracy / 4;
+        if (replayData != null) {
+            if (fullRotations < replayData.accuracy / 4)
+                fullRotations = replayData.accuracy / 4;
             if (fullRotations >= needRotations)
                 clear = true;
-            int bonusRot = (int) (replayObjectData.accuracy / 4 - needRotations + 1);
+            int bonusRot = (int) (replayData.accuracy / 4 - needRotations + 1);
             while (bonusRot < score) {
                 bonusRot++;
                 listener.onSpinnerHit(id, 1000, false, 0);
@@ -258,8 +252,8 @@ public class ModernSpinner extends Spinner {
         if (clear) {
             score = 300;
         }
-        if (replayObjectData != null) {
-            switch (replayObjectData.accuracy % 4) {
+        if (replayData != null) {
+            switch (replayData.accuracy % 4) {
                 case 0:
                     score = 0;
                     break;

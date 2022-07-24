@@ -2,8 +2,7 @@ package ru.nsu.ccfit.zuev.osu.menu;
 
 import android.content.Context;
 import android.content.SharedPreferences;
-
-import androidx.preference.PreferenceManager;
+import android.preference.PreferenceManager;
 
 import com.edlplan.ui.fragment.FavoriteManagerFragment;
 import com.edlplan.ui.fragment.FilterMenuFragment;

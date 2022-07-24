@@ -3,24 +3,20 @@ package com.edlplan.ui.fragment;
 import android.animation.Animator;
 import android.annotation.SuppressLint;
 import android.graphics.Color;
+import android.preference.PreferenceManager;
 import android.view.View;
 import android.widget.CheckBox;
 import android.widget.SeekBar;
 import android.widget.TextView;
-
-import androidx.preference.PreferenceManager;
 
 import com.edlplan.framework.easing.Easing;
 import com.edlplan.framework.math.FMath;
 import com.edlplan.ui.BaseAnimationListener;
 import com.edlplan.ui.EasingHelper;
 
-import java.util.Locale;
-
 import org.anddev.andengine.input.touch.TouchEvent;
 
 import ru.nsu.ccfit.zuev.osu.Config;
-import ru.nsu.ccfit.zuev.osu.game.cursor.flashlight.FlashLightEntity;
 import ru.nsu.ccfit.zuev.osu.menu.ModMenu;
 import ru.nsu.ccfit.zuev.osuplus.R;
 
@@ -35,9 +31,6 @@ public class InGameSettingMenu extends BaseFragment {
     private SeekBar backgroundBrightness;
     private SeekBar changeSpeed;
     private SeekBar forceAR;
-    private SeekBar flashlightFollowDelay;
-
-    private final int greenColor = Color.parseColor("#62c700");
 
     public static InGameSettingMenu getInstance() {
         if (menu == null) {
@@ -63,12 +56,6 @@ public class InGameSettingMenu extends BaseFragment {
                 .setDuration(200)
                 .setInterpolator(EasingHelper.asInterpolator(Easing.InOutQuad))
                 .start();
-    }
-
-    private void applyCustomModColor() {
-        final TextView customizedModsText = findViewById(R.id.customize_mods);
-        int color = ModMenu.getInstance().getFLfollowDelay() != FlashLightEntity.defaultMoveDelayS ? Color.RED : greenColor;
-        customizedModsText.setTextColor(color);
     }
 
     @SuppressLint({"ClickableViewAccessibility", "ApplySharedPref"})
@@ -127,7 +114,7 @@ public class InGameSettingMenu extends BaseFragment {
         enableSpeedChange.setOnCheckedChangeListener((buttonView, isChecked) -> {
             if (!isChecked) {
                 ModMenu.getInstance().setChangeSpeed(1.0f);
-                ((TextView) findViewById(R.id.changeSpeedText)).setText(String.format(Locale.getDefault(), "%.2fx", ModMenu.getInstance().getChangeSpeed()));
+                ((TextView) findViewById(R.id.changeSpeedText)).setText(String.format("%.2fx", ModMenu.getInstance().getChangeSpeed()));
                 changeSpeed.setProgress(10);
                 ModMenu.getInstance().updateMultiplierText();
             }
@@ -145,12 +132,12 @@ public class InGameSettingMenu extends BaseFragment {
 
         backgroundBrightness = findViewById(R.id.backgroundBrightnessBar);
         backgroundBrightness.setProgress(
-                PreferenceManager.getDefaultSharedPreferences(getContext()).getInt("bgbrightness", 25));
+                Integer.parseInt(PreferenceManager.getDefaultSharedPreferences(getContext()).getString("bgbrightness", "25")));
         backgroundBrightness.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
             @Override
             public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
                 ((TextView) findViewById(R.id.brightPreviewText)).setText(String.valueOf(progress));
-                ((TextView) findViewById(R.id.bgBrightnessText)).setText(progress + "%");
+                ((TextView) findViewById(R.id.bgBrightnessText)).setText(String.valueOf(progress) + "%");
                 int p = Math.round(FMath.clamp(255 * (progress / 100f), 0, 255));
                 findViewById(R.id.brightnessPreview).setBackgroundColor(Color.argb(255, p, p, p));
             }
@@ -160,7 +147,7 @@ public class InGameSettingMenu extends BaseFragment {
                 findViewById(R.id.brightnessPreviewLayout).setVisibility(View.VISIBLE);
                 int progress = seekBar.getProgress();
                 ((TextView) findViewById(R.id.brightPreviewText)).setText(String.valueOf(progress));
-                ((TextView) findViewById(R.id.bgBrightnessText)).setText(progress + "%");
+                ((TextView) findViewById(R.id.bgBrightnessText)).setText(String.valueOf(progress) + "%");
                 int p = Math.round(FMath.clamp(255 * (progress / 100f), 0, 255));
                 findViewById(R.id.brightnessPreview).setBackgroundColor(Color.argb(255, p, p, p));
             }
@@ -169,16 +156,16 @@ public class InGameSettingMenu extends BaseFragment {
             public void onStopTrackingTouch(SeekBar seekBar) {
                 findViewById(R.id.brightnessPreviewLayout).setVisibility(View.GONE);
                 int progress = seekBar.getProgress();
-                ((TextView) findViewById(R.id.bgBrightnessText)).setText(progress + "%");
+                ((TextView) findViewById(R.id.bgBrightnessText)).setText(String.valueOf(progress) + "%");
                 Config.setBackgroundBrightness(seekBar.getProgress() / 100f);
                 PreferenceManager.getDefaultSharedPreferences(getContext())
                         .edit()
-                        .putInt("bgbrightness", progress)
+                        .putString("bgbrightness", seekBar.getProgress() + "")
                         .commit();
             }
         });
         ((TextView) findViewById(R.id.bgBrightnessText)).setText(
-            PreferenceManager.getDefaultSharedPreferences(getContext()).getInt("bgbrightness", 25) + "%");
+            Integer.parseInt(PreferenceManager.getDefaultSharedPreferences(getContext()).getString("bgbrightness", "25")) + "%");
 
         changeSpeed = findViewById(R.id.changeSpeedBar);
         changeSpeed.setProgress((int)(ModMenu.getInstance().getChangeSpeed() * 20 - 10));
@@ -186,7 +173,7 @@ public class InGameSettingMenu extends BaseFragment {
             @Override
             public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
                 float p = 0.5f + 0.05f * progress;
-                ((TextView) findViewById(R.id.changeSpeedText)).setText(String.format(Locale.getDefault(), "%.2fx", p));
+                ((TextView) findViewById(R.id.changeSpeedText)).setText(String.format("%.2fx", p));
                 if (p == 1.0f){
                     enableSpeedChange.setChecked(false);
                 }
@@ -200,7 +187,7 @@ public class InGameSettingMenu extends BaseFragment {
             public void onStartTrackingTouch(SeekBar seekBar) {
                 int progress = seekBar.getProgress();
                 float p = 0.5f + 0.05f * progress;
-                ((TextView) findViewById(R.id.changeSpeedText)).setText(String.format(Locale.getDefault(), "%.2fx", p));
+                ((TextView) findViewById(R.id.changeSpeedText)).setText(String.format("%.2fx", p));
                 if (p == 1.0f){
                     enableSpeedChange.setChecked(false);
                 }
@@ -214,7 +201,7 @@ public class InGameSettingMenu extends BaseFragment {
             public void onStopTrackingTouch(SeekBar seekBar) {
                 int progress = seekBar.getProgress();
                 float p = 0.5f + 0.05f * progress;
-                ((TextView) findViewById(R.id.changeSpeedText)).setText(String.format(Locale.getDefault(), "%.2fx", p));
+                ((TextView) findViewById(R.id.changeSpeedText)).setText(String.format("%.2fx", p));
                 ModMenu.getInstance().setChangeSpeed(p);
                 if (p == 1.0f){
                     enableSpeedChange.setChecked(false);
@@ -225,7 +212,7 @@ public class InGameSettingMenu extends BaseFragment {
                 }
             }
         });
-        ((TextView) findViewById(R.id.changeSpeedText)).setText(String.format(Locale.getDefault(), "%.2fx", ModMenu.getInstance().getChangeSpeed()));
+        ((TextView) findViewById(R.id.changeSpeedText)).setText(String.format("%.2fx", ModMenu.getInstance().getChangeSpeed()));
 
         forceAR = findViewById(R.id.forceARBar);
         forceAR.setProgress((int)(ModMenu.getInstance().getForceAR() * 10));
@@ -233,7 +220,7 @@ public class InGameSettingMenu extends BaseFragment {
             @Override
             public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
                 float p = 0.1f * progress;
-                ((TextView) findViewById(R.id.forceARText)).setText(String.format(Locale.getDefault(), "AR%.1f", p));
+                ((TextView) findViewById(R.id.forceARText)).setText(String.format("AR%.1f", p));
                 if(ModMenu.getInstance().isEnableForceAR()){
                     ModMenu.getInstance().updateMultiplierText();
                 }
@@ -243,7 +230,7 @@ public class InGameSettingMenu extends BaseFragment {
             public void onStartTrackingTouch(SeekBar seekBar) {
                 int progress = seekBar.getProgress();
                 float p = 0.1f * progress;
-                ((TextView) findViewById(R.id.forceARText)).setText(String.format(Locale.getDefault(), "AR%.1f", p));
+                ((TextView) findViewById(R.id.forceARText)).setText(String.format("AR%.1f", p));
                 if(ModMenu.getInstance().isEnableForceAR()){
                     ModMenu.getInstance().updateMultiplierText();
                 }
@@ -253,31 +240,12 @@ public class InGameSettingMenu extends BaseFragment {
             public void onStopTrackingTouch(SeekBar seekBar) {
                 int progress = seekBar.getProgress();
                 float p = 0.1f * progress;
-                ((TextView) findViewById(R.id.forceARText)).setText(String.format(Locale.getDefault(), "AR%.1f", p));
+                ((TextView) findViewById(R.id.forceARText)).setText(String.format("AR%.1f", p));
                 ModMenu.getInstance().setForceAR(p);
                 if(ModMenu.getInstance().isEnableForceAR()){
                     ModMenu.getInstance().updateMultiplierText();
                 }
             }
-        });
-        
-        ((TextView) findViewById(R.id.forceARText)).setText(String.format(Locale.getDefault(), "AR%.1f", ModMenu.getInstance().getForceAR()));
-
-        flashlightFollowDelay = findViewById(R.id.flashlightFollowDelayBar);
-        flashlightFollowDelay.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
-            @Override
-            public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
-                ModMenu.getInstance().setFLfollowDelay((float) Math.round(progress * 1200f) / (10f * 1000f));
-                applyCustomModColor();
-                ((TextView) findViewById(R.id.flashlightFollowDelayText))
-                    .setText(String.format(Locale.getDefault(), "%.1fms", progress * FlashLightEntity.defaultMoveDelayMS));
-            }
-
-            @Override
-            public void onStartTrackingTouch(SeekBar seekBar) {}
-
-            @Override
-            public void onStopTrackingTouch(SeekBar seekBar) {}
         });
         ((TextView) findViewById(R.id.forceARText)).setText(String.format("AR%.1f", ModMenu.getInstance().getForceAR()));
     }

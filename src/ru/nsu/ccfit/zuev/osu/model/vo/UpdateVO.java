@@ -1,33 +1,42 @@
 package ru.nsu.ccfit.zuev.osu.model.vo;
 
+import com.google.gson.annotations.SerializedName;
+
+/**
+ * @author dgsrz.
+ */
 public class UpdateVO {
 
-    private long version_code;
-    private String link;
-    private String changelog;
+    @SerializedName("v_code")
+    private Integer versionCode;
 
-    public long getVersionCode(){
-        return version_code;
+    @SerializedName("desc")
+    private String description;
+
+    @SerializedName("link")
+    private String link;
+
+    public Integer getVersionCode() {
+        return versionCode;
     }
 
-    public String getLink(){
+    public void setVersionCode(Integer versionCode) {
+        this.versionCode = versionCode;
+    }
+
+    public String getDescription() {
+        return description;
+    }
+
+    public void setDescription(String description) {
+        this.description = description;
+    }
+
+    public String getLink() {
         return link;
     }
 
-    public String getChangelog(){
-        return changelog;
-    }
-
-    public void setVersionCode(long version_code){
-        this.version_code = version_code;
-    }
-
-    public void setLink(String link){
+    public void setLink(String link) {
         this.link = link;
     }
-
-    public void setChangelog(String changelog){
-        this.changelog = changelog;
-    }
-
 }

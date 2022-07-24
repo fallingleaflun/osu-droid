@@ -32,19 +32,19 @@ public class OdrDatabase {
     }
 
     private static String getString(Cursor cursor, String c) {
-        return cursor.getString(cursor.getColumnIndexOrThrow(c));
+        return cursor.getString(cursor.getColumnIndex(c));
     }
 
     private static int getInt(Cursor cursor, String c) {
-        return cursor.getInt(cursor.getColumnIndexOrThrow(c));
+        return cursor.getInt(cursor.getColumnIndex(c));
     }
 
     private static long getLong(Cursor cursor, String c) {
-        return cursor.getLong(cursor.getColumnIndexOrThrow(c));
+        return cursor.getLong(cursor.getColumnIndex(c));
     }
 
     private static float getFloat(Cursor cursor, String c) {
-        return cursor.getFloat(cursor.getColumnIndexOrThrow(c));
+        return cursor.getFloat(cursor.getColumnIndex(c));
     }
 
     public boolean available() {

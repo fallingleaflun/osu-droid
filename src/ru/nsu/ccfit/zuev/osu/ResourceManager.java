@@ -21,6 +21,7 @@ import org.anddev.andengine.util.Debug;
 import org.json.JSONObject;
 
 import java.io.File;
+import java.io.FileFilter;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
@@ -29,13 +30,9 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import ru.nsu.ccfit.zuev.audio.BassSoundProvider;
-import ru.nsu.ccfit.zuev.osu.helper.FileUtils;
 import ru.nsu.ccfit.zuev.osu.helper.QualityAssetBitmapSource;
 import ru.nsu.ccfit.zuev.osu.helper.QualityFileBitmapSource;
 import ru.nsu.ccfit.zuev.osu.helper.ScaledBitmapSource;
-import ru.nsu.ccfit.zuev.skins.OsuSkin;
-import ru.nsu.ccfit.zuev.skins.SkinJsonReader;
-import ru.nsu.ccfit.zuev.skins.SkinManager;
 
 public class ResourceManager {
     private static ResourceManager mgr = new ResourceManager();
@@ -75,6 +72,7 @@ public class ResourceManager {
     }
 
     public void loadSkin(String folder) {
+        //tzl: 读取皮肤主要包括字体、纹理贴图，默认皮肤的素材都放在gfx中
         loadFont("smallFont", null, 21, Color.WHITE);
         loadFont("middleFont", null, 24, Color.WHITE);
         loadFont("font", null, 28, Color.WHITE);
@@ -93,7 +91,8 @@ public class ResourceManager {
                 TextureOptions.BILINEAR_PREMULTIPLYALPHA);
         loadTexture("ranking_enabled", "ranking_enabled.png", false);
         loadTexture("ranking_disabled", "ranking_disabled.png", false);
-        loadTexture("flashlight_cursor", "flashlight_cursor.png", false, TextureOptions.BILINEAR_PREMULTIPLYALPHA);
+        loadTexture("flashlight_cursor", "flashlight_cursor.png", false);
+        loadTexture("flashlight_dim_layer", "flashlight_dim_layer.png", false);
 
         if (textures.containsKey("lighting") == false)
             textures.put("lighting", null);
@@ -112,7 +111,7 @@ public class ResourceManager {
             if (!skinFolder.exists()) {
                 skinFolder = null;
             } else {
-                skinFiles = FileUtils.listFiles(skinFolder);
+                skinFiles = skinFolder.listFiles();
             }
         }
         if (skinFiles != null) {
@@ -120,14 +119,14 @@ public class ResourceManager {
             File skinJson = new File(folder, "skin.json");
             if (skinJson.exists()) {
                 try {
-                    skinjson = new JSONObject(OsuSkin.readFull(skinJson));
+                    skinjson = new JSONObject(SkinJson.readFull(skinJson));
                 } catch (Exception e) {
                     e.printStackTrace();
                     skinjson = null;
                 }
             }
             if (skinjson == null) skinjson = new JSONObject();
-            SkinJsonReader.getReader().supplyJson(skinjson);
+            SkinJson.get().loadSkinJson(skinjson);
         }
         final Map<String, File> availableFiles = new HashMap<String, File>();
         if (skinFiles != null) {
@@ -137,12 +136,7 @@ public class ResourceManager {
                             && (f.getName().endsWith(".wav") || f.getName().endsWith(".mp3"))) {
                         continue;
                     }
-                    if (f.getName().length() < 5) {
-                        continue;
-                    }
-                    if (f.length() == 0) {
-                        continue;
-                    }
+                    if (f.getName().length() < 5) continue;
                     final String filename = f.getName().substring(0, f.getName().length() - 4);
                     availableFiles.put(filename, f);
                     //if ((filename.startsWith("hit0") || filename.startsWith("hit50") || filename.startsWith("hit100") || filename.startsWith("hit300"))){
@@ -332,11 +326,12 @@ public class ResourceManager {
 
     public Font loadFont(final String resname, final String file, int size,
                          final int color) {
-        size /= Config.getTextureQuality();
+        //tzl: 使用AndEngine的字体处理API
+        size /= Config.getTextureQuality();//tzl: 纹理质量是什么?
         final BitmapTextureAtlas texture = new BitmapTextureAtlas(512, 512,
                 TextureOptions.BILINEAR_PREMULTIPLYALPHA);
         Font font;
-        if (file == null) {
+        if (file == null) {//下载下来的这个版本就没有font文件，用的是这段默认设置
             font = new Font(texture, Typeface.create(Typeface.DEFAULT,
                     Typeface.NORMAL), size, true, color);
         } else {
@@ -561,8 +556,15 @@ public class ResourceManager {
     }
 
     public void loadHighQualityFileUnderFolder(File folder) {
-        File[] files = FileUtils.listFiles(folder, new String[]{
-            ".png", ".jpg", ".bmp"});
+        File[] files = folder.listFiles(new FileFilter() {
+            @Override
+            public boolean accept(File pathname) {
+                return pathname.isDirectory()
+                        || pathname.getName().toLowerCase().endsWith(".png")
+                        || pathname.getName().toLowerCase().endsWith(".jpg")
+                        || pathname.getName().toLowerCase().endsWith(".bmp");
+            }
+        });
         for (File file : files) {
             if (file.isDirectory()) {
                 loadHighQualityFileUnderFolder(file);
@@ -601,7 +603,7 @@ public class ResourceManager {
 
     public BassSoundProvider loadSound(final String resname, final String file,
                                        final boolean external) {
-        BassSoundProvider snd = new BassSoundProvider();
+        BassSoundProvider snd = new BassSoundProvider(Config.getSoundVolume());
         if (external) {
             //若是来自储存文件
             try {
@@ -638,7 +640,7 @@ public class ResourceManager {
     }
 
     public void loadCustomSound(final File file) {
-        BassSoundProvider snd = new BassSoundProvider();
+        BassSoundProvider snd = new BassSoundProvider(Config.getSoundVolume());
         String resName = file.getName();
         resName = resName.substring(0, resName.length() - 4);
         if (resName.length() == 0) {

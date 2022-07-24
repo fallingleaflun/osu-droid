@@ -2,11 +2,10 @@ package ru.nsu.ccfit.zuev.osu.scoring;
 
 import android.graphics.PointF;
 
-import androidx.annotation.NonNull;
-
 import org.anddev.andengine.util.Debug;
 
 import java.io.EOFException;
+import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
@@ -26,28 +25,35 @@ import ru.nsu.ccfit.zuev.osu.Config;
 import ru.nsu.ccfit.zuev.osu.ToastLogger;
 import ru.nsu.ccfit.zuev.osu.Utils;
 import ru.nsu.ccfit.zuev.osu.game.GameScene;
-import ru.nsu.ccfit.zuev.osu.game.cursor.flashlight.FlashLightEntity;
 import ru.nsu.ccfit.zuev.osu.game.mods.GameMod;
 import ru.nsu.ccfit.zuev.osuplus.R;
 
 public class Replay {
+
+    public static final byte RESULT_300 = 4;
+    public static final byte RESULT_100 = 3;
+    public static final byte RESULT_50 = 2;
+    public static final byte RESULT_0 = 1;
+    public static final byte ID_DOWN = 0;
+    public static final byte ID_UP = 2;
+
+    ;
+    public static final byte ID_MOVE = 1;
     public static EnumSet<GameMod> mod = EnumSet.noneOf(GameMod.class);
     public static EnumSet<GameMod> oldMod = EnumSet.noneOf(GameMod.class);
-    protected int pointsSkipped = 0;
-    public ArrayList<MoveArray> cursorMoves = new ArrayList<>();
+    private static int pointsSkipped = 0;
+    public ArrayList<MoveArray> cursorMoves = new ArrayList<MoveArray>();
     public int[] cursorIndex;
     public int[] lastMoveIndex;
     public ReplayObjectData[] objectData = null;
     public int replayVersion;
     public StatisticV2 stat = null;
     private String md5 = "";
-    private String mapFile = "";
-    private String mapName = "";
+    private String mapfile = "";
+    private String mapname = "";
     public static float oldChangeSpeed = 1.0f;
     public static float oldForceAR = 9.0f;
     public static boolean oldEnableForceAR = false;
-    public static float oldFLFollowDelay = FlashLightEntity.defaultMoveDelayS;
-
     public Replay() {
         cursorMoves.add(new MoveArray(200));
         cursorMoves.add(new MoveArray(50));
@@ -60,12 +66,14 @@ public class Replay {
             cursorIndex[i] = 0;
             lastMoveIndex[i] = -1;
         }
+
+        pointsSkipped = 0;
     }
 
-    public void setMap(String mapName, String file, String md5) {
-        this.mapName = mapName;
+    public void setMap(String mapname, String file, String md5) {
+        this.mapname = mapname;
         this.md5 = md5;
-        this.mapFile = file;
+        this.mapfile = file;
     }
 
     public void setObjectCount(int count) {
@@ -82,32 +90,34 @@ public class Replay {
         objectData[id] = data;
     }
 
-    public void addObjectScore(int id, ResultType score) {
+    public void addObjectScore(int id, byte score) {
         if (id < 0 || objectData == null || id >= objectData.length)
             return;
 
         if (objectData[id] == null)
             objectData[id] = new ReplayObjectData();
-
-        objectData[id].result = score.getId();
+        objectData[id].result = score;
     }
 
     public void addPress(final float time, final PointF pos, final int pid) {
         if (pid > GameScene.CursorCount) return;
+
         int itime = Math.max(0, (int) (time * 1000));
-        cursorMoves.get(pid).pushBack(this, itime, pos.x, pos.y, TouchType.DOWN);
+        cursorMoves.get(pid).pushBack(itime, (short) pos.x, (short) pos.y, ID_DOWN);
     }
 
     public void addMove(final float time, final PointF pos, final int pid) {
         if (pid > GameScene.CursorCount) return;
+
         int itime = Math.max(0, (int) (time * 1000));
-        cursorMoves.get(pid).pushBack(this, itime, pos.x, pos.y, TouchType.MOVE);
+        cursorMoves.get(pid).pushBack(itime, (short) pos.x, (short) pos.y, ID_MOVE);
     }
 
     public void addUp(final float time, final int pid) {
         if (pid > GameScene.CursorCount) return;
+
         int itime = Math.max(0, (int) (time * 1000));
-        cursorMoves.get(pid).pushBack(itime, TouchType.UP);
+        cursorMoves.get(pid).pushBack(itime, ID_UP);
     }
 
     public void save(final String filename) {
@@ -118,7 +128,7 @@ public class Replay {
         ObjectOutputStream os;
         ZipOutputStream zip;
         try {
-            zip = new ZipOutputStream(new FileOutputStream(filename));
+            zip = new ZipOutputStream(new FileOutputStream(new File(filename)));
             zip.setMethod(ZipOutputStream.DEFLATED);
             zip.setLevel(Deflater.DEFAULT_COMPRESSION);
             zip.putNextEntry(new ZipEntry("data"));
@@ -133,8 +143,8 @@ public class Replay {
 
         try {
             os.writeObject(new ReplayVersion());
-            os.writeObject(mapName);
-            os.writeObject(mapFile);
+            os.writeObject(mapname);
+            os.writeObject(mapfile);
             os.writeObject(md5);
 
             if (stat != null) {
@@ -194,11 +204,11 @@ public class Replay {
 
     }
 
-    @SuppressWarnings("unchecked")
     public boolean loadInfo(final String filename) {
         ObjectInputStream os;
         try {
-            final ZipInputStream zip = new ZipInputStream(new FileInputStream(filename));
+            final ZipInputStream zip = new ZipInputStream(new FileInputStream(
+                    new File(filename)));
             zip.getNextEntry();
             os = new ObjectInputStream(zip);
             // zip.close();
@@ -218,15 +228,16 @@ public class Replay {
                 Debug.i("Other replay version");
                 version = ((ReplayVersion) firstObject).version;
                 replayVersion = version;
-                mapName = (String) os.readObject();
+                mapname = (String) os.readObject();
+
             } else {
-                mapName = (String) firstObject;
+                mapname = (String) firstObject;
             }
-            mapFile = (String) os.readObject();
+            mapfile = (String) os.readObject();
             md5 = (String) os.readObject();
 
-            Debug.i(mapName);
-            Debug.i(mapFile);
+            Debug.i(mapname);
+            Debug.i(mapfile);
             Debug.i(md5);
 
             if (version >= 3) {
@@ -246,7 +257,7 @@ public class Replay {
                 stat.setMod((EnumSet<GameMod>) os.readObject());
             }
 
-            if (version >= 4) {
+            if  (version >= 4) {
                 stat.setExtraModFromString((String) os.readObject());
             }
 
@@ -264,11 +275,11 @@ public class Replay {
         return true;
     }
 
-    @SuppressWarnings("unchecked")
     public boolean load(final String filename) {
         ObjectInputStream os;
         try {
-            final ZipInputStream zip = new ZipInputStream(new FileInputStream(filename));
+            final ZipInputStream zip = new ZipInputStream(new FileInputStream(
+                    new File(filename)));
             zip.getNextEntry();
             os = new ObjectInputStream(zip);
             // zip.close();
@@ -282,26 +293,28 @@ public class Replay {
         cursorMoves.clear();
         int version = 0;
         try {
-            String mName;
+            String mname;
             Object firstObject = os.readObject();
-            Debug.i("Read object: " + firstObject.getClass().getName());
+            Debug.i("Readed object: " + firstObject.getClass().getName());
             if (firstObject.getClass().equals(ReplayVersion.class)) {
                 Debug.i("Other replay version");
                 version = ((ReplayVersion) firstObject).version;
                 replayVersion = version;
-                mName = (String) os.readObject();
+                mname = (String) os.readObject();
+
             } else {
-                mName = (String) firstObject;
+                mname = (String) firstObject;
             }
-            String mFile = (String) os.readObject();
+            String mfile = (String) os.readObject();
             String mmd5 = (String) os.readObject();
 
-            if (!mName.equals(mapName) && !mFile.equals(mapFile)) {
+            if (mname.equals(mapname) == false && mfile.equals(mapfile) == false) {
                 Debug.i("Replay doesn't match the map!");
-                Debug.i(mapName + " ::: " + mName);
-                Debug.i(mapFile + " ::: " + mFile);
+                Debug.i(mapname + " ::: " + mname);
+                Debug.i(mapfile + " ::: " + mfile);
                 Debug.i(md5 + " ::: " + mmd5);
                 ToastLogger.showTextId(R.string.replay_wrongmap, true);
+
                 os.close();
                 return false;
             }
@@ -340,9 +353,7 @@ public class Replay {
                 if (len > 0) {
                     data.tickSet = new BitSet();
                     byte[] bytes = new byte[len];
-                    if (os.read(bytes) > 0) {
-                        System.out.println("Read " + len + " bytes");
-                    }
+                    os.read(bytes);
                     for (int j = 0; j < len * 8; j++) {
                         data.tickSet.set(j, (bytes[len - j / 8 - 1] & 1 << (j % 8)) != 0);
                     }
@@ -354,7 +365,6 @@ public class Replay {
             }
         } catch (EOFException e) {
             Debug.e("O_o eof...");
-            Debug.e(e);
             ToastLogger.showTextId(R.string.replay_corrupted, true);
             return false;
 
@@ -385,22 +395,18 @@ public class Replay {
         return md5;
     }
 
-    public String getMapFile() {
-        return mapFile;
+    public String getMapfile() {
+        return mapfile;
     }
 
-    public String getMapName() {
-        return mapName;
+    public String getMapname() {
+        return mapname;
     }
 
-    /*
-        Object used to store data about current replay version for compatibility purposes.
-        Version 4: Adds ExtraModString's save and load in save()/load()/loadInfo()
-        Version 5: Changes coordinates to use the float primitive type
-     */
     public static class ReplayVersion implements Serializable {
         private static final long serialVersionUID = 4643121693566795335L;
-        int version = 5;
+        int version = 4;
+        // version 4: Add ExtraModString's save and load in save()/load()/loadInfo()
     }
 
     public static class ReplayObjectData {
@@ -409,64 +415,50 @@ public class Replay {
         public byte result = 0;
     }
 
-    public static class ReplayMovement {
-        protected int time;
-        protected PointF point = new PointF();
-        protected TouchType touchType;
-
-        public int getTime() {
-            return time;
-        }
-
-        public PointF getPoint() {
-            return point;
-        }
-
-        public TouchType getTouchType() {
-            return touchType;
-        }
-    }
-
     public static class MoveArray {
-        public ReplayMovement[] movements;
+        public int[] time;
+        public short[] x;
+        public short[] y;
+        public byte[] id;
+
         public int size;
         public int allocated;
 
         public MoveArray(int startSize) {
             allocated = startSize;
             size = 0;
-            movements = new ReplayMovement[allocated];
+            time = new int[allocated];
+            x = new short[allocated];
+            y = new short[allocated];
+            id = new byte[allocated];
         }
 
-        private static float readTouchPoint(ObjectInputStream is, @NonNull Replay replay) throws IOException {
-            return replay.replayVersion < 5 ? is.readShort() : is.readFloat();
-        }
-
-        @NonNull
-        public static MoveArray readFrom(@NonNull ObjectInputStream is, Replay replay) throws IOException {
+        public static MoveArray readFrom(ObjectInputStream is, Replay replay) throws IOException {
             int size = is.readInt();
             MoveArray array = new MoveArray(size);
-            array.size = size;
+
             for (int i = 0; i < size; i++) {
-                ReplayMovement movement = new ReplayMovement();
-                array.movements[i] = movement;
-                movement.time = is.readInt();
-                movement.touchType = TouchType.getByID((byte) (movement.time & 3));
-                movement.time >>= 2;
-                if (movement.touchType != TouchType.UP) {
-                    float baseX = readTouchPoint(is, replay);
-                    float baseY = readTouchPoint(is, replay);
-                    PointF gamePoint = new PointF(
-                            baseX / Config.getTextureQuality(),
-                            baseY / Config.getTextureQuality()
-                    );
-                    PointF realPoint = replay.replayVersion > 1 ?
-                            Utils.trackToRealCoords(gamePoint) :
-                            Utils.trackToRealCoords(
-                                    Utils.realToTrackCoords(gamePoint, 1024, 600, true)
-                            );
-                    movement.point.set(realPoint);
+                array.time[i] = is.readInt();
+                array.id[i] = (byte) (array.time[i] & 3);
+                array.time[i] >>= 2;
+                if (array.id[i] != ID_UP) {
+                    PointF gamePoint = new PointF((short) (is.readShort() / Config.getTextureQuality()),
+                            (short) (is.readShort() / Config.getTextureQuality()));
+					/*if (GameHelper.isHardrock())
+					{
+						array.y[i] = Utils.flipY(array.y[i]);
+					}*/
+                    if (replay.replayVersion == 1) {
+                        PointF realPoint = Utils.trackToRealCoords(Utils.realToTrackCoords(gamePoint, 1024, 600, true));
+                        array.x[i] = (short) realPoint.x;
+                        array.y[i] = (short) realPoint.y;
+                    } else if (replay.replayVersion > 1) {
+                        PointF realPoint = Utils.trackToRealCoords(gamePoint);
+                        array.x[i] = (short) realPoint.x;
+                        array.y[i] = (short) realPoint.y;
+                    }
                 }
+                array.size = size;
             }
 
             return array;
@@ -474,62 +466,63 @@ public class Replay {
 
         public void reallocate(int newSize) {
             if (newSize <= allocated) return;
-            ReplayMovement[] newMovements = new ReplayMovement[newSize];
-            System.arraycopy(movements, 0, newMovements, 0, size);
-            movements = newMovements;
+            int[] newTime = new int[newSize];
+            short[] newX = new short[newSize];
+            short[] newY = new short[newSize];
+            byte[] newId = new byte[newSize];
+
+            System.arraycopy(time, 0, newTime, 0, size);
+            System.arraycopy(x, 0, newX, 0, size);
+            System.arraycopy(y, 0, newY, 0, size);
+            System.arraycopy(id, 0, newId, 0, size);
+
+            time = newTime;
+            x = newX;
+            y = newY;
+            id = newId;
+
             allocated = newSize;
         }
 
-        public boolean checkNewPoint(float px, float py) {
+        public boolean checkNewPoint(short px, short py) {
             if (size < 2) return false;
+            float tx = (px + x[size - 2]) * 0.5f;
+            float ty = (py + y[size - 2]) * 0.5f;
 
-            ReplayMovement minusTwoMovement = movements[size - 2];
-            ReplayMovement previousMovement = movements[size - 1];
-
-            float tx = (px + minusTwoMovement.point.x) * 0.5f;
-            float ty = (py + minusTwoMovement.point.y) * 0.5f;
-
-            return (Utils.sqr(previousMovement.point.x - tx) + Utils.sqr(previousMovement.point.y - ty)) <= 25;
+            return (Utils.sqr(x[size - 1] - tx) + Utils.sqr(y[size - 1] - ty)) <= 25;
         }
 
-        public void pushBack(Replay replay, int time, float x, float y, TouchType touchType) {
+        public void pushBack(int time, short x, short y, byte id) {
             int idx = size;
-            if (touchType == TouchType.MOVE && checkNewPoint(x, y)) {
+            if (id == ID_MOVE && checkNewPoint(x, y)) {
                 idx = size - 1;
-                replay.pointsSkipped++;
+                pointsSkipped++;
             } else {
-                if (size + 1 >= allocated) {
+                if (size + 1 >= allocated)
                     reallocate((allocated * 3) / 2);
-                }
                 size++;
             }
-            ReplayMovement movement = new ReplayMovement();
-            movements[idx] = movement;
-            movement.time = time;
-            movement.point.x = x;
-            movement.point.y = y;
-            movement.touchType = touchType;
+            this.time[idx] = time;
+            this.x[idx] = x;
+            this.y[idx] = y;
+            this.id[idx] = id;
         }
 
-        public void pushBack(int time, TouchType touchType) {
-            if (size >= allocated) {
+        public void pushBack(int time, byte id) {
+            if (size >= allocated)
                 reallocate((allocated * 3) / 2);
-            }
-            movements[size] = new ReplayMovement();
-            ReplayMovement movement = movements[size];
-            movement.time = time;
-            movement.touchType = touchType;
+            this.time[size] = time;
+            this.id[size] = id;
             size++;
         }
 
-        public void writeTo(@NonNull ObjectOutputStream os) throws IOException {
+        public void writeTo(ObjectOutputStream os) throws IOException {
             os.writeInt(size);
             for (int i = 0; i < size; i++) {
-                ReplayMovement movement = movements[i];
-                os.writeInt((movement.time << 2) + movement.touchType.getId());
-                if (movement.touchType != TouchType.UP) {
-                    os.writeFloat(movement.point.x * Config.getTextureQuality());
-                    os.writeFloat(movement.point.y * Config.getTextureQuality());
+                os.writeInt((time[i] << 2) + id[i]);
+                if (id[i] != ID_UP) {
+                    os.writeShort(x[i] * Config.getTextureQuality());
+                    os.writeShort(y[i] * Config.getTextureQuality());
                 }
             }
         }

@@ -29,7 +29,10 @@ public class GlobalManager {
     private SongService songService;
     private TrackInfo selectedTrack;
     private SaveServiceObject saveServiceObject;
-    private String skinNow;
+    private String skinNow; //tzl: 当前的皮肤路径, 在MainActivity的onResume()会检查是否和配置的皮肤路径一致，不一致就会重新加载从而不用重启app
+
+    private GlobalManager(){//tzl: private的构造函数都不写，单类单了个寂寞
+    }
 
     public static GlobalManager getInstance() {
         if (instance == null) {
@@ -71,7 +74,7 @@ public class GlobalManager {
         getGameScene().setOldScene(getSongMenu().getScene());
         if (songService != null) {
             songService.stop();
-            songService.hideNotification();
+            songService.hideNotifyPanel();
         }
     }
 

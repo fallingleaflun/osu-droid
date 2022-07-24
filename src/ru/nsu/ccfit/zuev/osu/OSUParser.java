@@ -3,12 +3,12 @@ package ru.nsu.ccfit.zuev.osu;
 import android.graphics.PointF;
 import android.util.Log;
 
-import okio.BufferedSource;
-import okio.Okio;
-
 import org.anddev.andengine.util.Debug;
 
+import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -21,18 +21,18 @@ import ru.nsu.ccfit.zuev.osu.game.GameObjectData;
 import ru.nsu.ccfit.zuev.osu.helper.StringTable;
 import ru.nsu.ccfit.zuev.osuplus.BuildConfig;
 import ru.nsu.ccfit.zuev.osuplus.R;
-import com.dgsrz.tpdifficulty.TimingPoint;
-import com.dgsrz.tpdifficulty.hitobject.HitCircle;
-import com.dgsrz.tpdifficulty.hitobject.HitObject;
-import com.dgsrz.tpdifficulty.hitobject.HitObjectType;
-import com.dgsrz.tpdifficulty.hitobject.Slider;
-import com.dgsrz.tpdifficulty.hitobject.SliderType;
-import com.dgsrz.tpdifficulty.hitobject.Spinner;
-import com.dgsrz.tpdifficulty.tp.AiModtpDifficulty;
+import test.tpdifficulty.TimingPoint;
+import test.tpdifficulty.hitobject.HitCircle;
+import test.tpdifficulty.hitobject.HitObject;
+import test.tpdifficulty.hitobject.HitObjectType;
+import test.tpdifficulty.hitobject.Slider;
+import test.tpdifficulty.hitobject.SliderType;
+import test.tpdifficulty.hitobject.Spinner;
+import test.tpdifficulty.tp.AiModtpDifficulty;
 
 public class OSUParser {
     private final File file;
-    private BufferedSource source;
+    private BufferedReader reader = null;
     private boolean fileOpened = false;
     private final ArrayList<TimingPoint> timingPoints = new ArrayList<>();
     private final ArrayList<HitObject> hitObjects = new ArrayList<>();
@@ -51,24 +51,26 @@ public class OSUParser {
 
     public boolean openFile() {
         try {
-            source = Okio.buffer(Okio.source(file));
-        } catch (final IOException e) {
+            FileReader fileReader = new FileReader(file);
+            reader = new BufferedReader(fileReader);
+        } catch (final FileNotFoundException e) {
             Debug.e("OSUParser.openFile: " + e.getMessage(), e);
             return false;
         }
 
+        String head;
         try {
-            String head = source.readUtf8Line();
+            head = reader.readLine().trim();
             Pattern pattern = Pattern.compile("osu file format v(\\d+)");
             Matcher matcher = pattern.matcher(head);
             if (!matcher.find()) {
-                source.close();
-                source = null;
+                reader.close();
+                reader = null;
                 return false;
             }
         } catch (IOException e) {
             Debug.e("OSUParser.openFile: " + e.getMessage(), e);
-        } catch (Exception e) {
+        } catch (NullPointerException e) {
             Debug.e("OSUParser.openFile: " + e.getMessage(), e);
         }
 
@@ -100,8 +102,8 @@ public class OSUParser {
             return false;
         }
 
-        // Debug.i("MaxCombo: " + track.getMaxCombo());
-        // Debug.i("Caching " + track.getFilename());
+        Debug.i("MaxCombo: " + track.getMaxCombo());
+        Debug.i("Caching " + track.getFilename());
 
         return true;
     }
@@ -151,7 +153,7 @@ public class OSUParser {
 
         try {
             while (true) {
-                String s = source.readUtf8Line();
+                String s = reader.readLine();
 
                 // If s is null, it means we've reached the end of the file.
                 // End the loop and don't forget to add the last section,
@@ -168,7 +170,7 @@ public class OSUParser {
                                 data.addSection(currentSection, map);
                         }
                     }
-                    source.close();
+                    reader.close();
                     break;
                 }
 

@@ -1,8 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 
-<PreferenceScreen
-    xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto">
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android">
 
     <PreferenceScreen android:key="onlineOption" android:title="@string/opt_onlineOpt">
         <PreferenceCategory android:key="onlineOption_normal" android:title="@string/opt_onlineOpt_normal">
@@ -33,13 +31,9 @@
         <ListPreference android:entries="@array/bg_quality_names" android:entryValues="@array/bg_quality_values"
             android:key="background" android:title="@string/opt_bg_title"
             android:summary="@string/opt_bg_summary" android:defaultValue="1"/>
-        <SeekBarPreference android:summary="@string/opt_bgbrightness_summary" android:title="@string/opt_bgbrightness_title"
-            android:key="bgbrightness" app:min="1" app:showSeekBarValue="true" android:defaultValue="25"/>
-        <!-- <ListPreference android:entries="@array/bg_brightness_names" android:title="@string/opt_bgbrightness_title"
+        <ListPreference android:entries="@array/bg_brightness_names" android:title="@string/opt_bgbrightness_title"
             android:key="bgbrightness" android:summary="@string/opt_bgbrightness_summary"
-            android:defaultValue="25" android:entryValues="@array/bg_brightness_values"/> -->
-        <com.edlplan.ui.SkinPathPreference android:title="@string/opt_skinpath_title" android:summary="@string/opt_skinpath_summary"
-            android:key="skinPath" android:entries="@array/placeholder_array" android:entryValues="@array/placeholder_array"/>
+            android:defaultValue="25" android:entryValues="@array/bg_brightness_values"/>
         <ListPreference android:entries="@array/error_meter_display_names" android:title="@string/opt_error_meter_display_title"
             android:key="errormeter" android:summary="@string/opt_error_meter_display_summary"
             android:defaultValue="0" android:entryValues="@array/error_meter_display_values"/>
@@ -57,7 +51,8 @@
         <CheckBoxPreference android:summary="@string/opt_combo_burst_summary" android:title="@string/opt_combo_burst_title"
             android:key="comboburst" android:defaultValue="false"/>
         <CheckBoxPreference android:summary="@string/opt_largeimages_summary"
-            android:title="@string/opt_largeimages_title" android:key="images" android:defaultValue="false"/>
+            android:title="@string/opt_largeimages_title" android:key="images"
+            android:defaultValue="false"/>
         <CheckBoxPreference android:summary="@string/opt_fps_summary" android:title="@string/opt_fps_title"
             android:key="fps" android:defaultValue="true"/>
         <CheckBoxPreference android:key="sliderborders" android:title="@string/opt_sliderborders_title"
@@ -68,11 +63,9 @@
         <CheckBoxPreference android:summary="@string/opt_showcursor_summary"
             android:title="@string/opt_showcursor_title" android:key="showcursor"
             android:defaultValue="false"/>
-        <SeekBarPreference android:summary="@string/opt_cursor_size_summary" android:title="@string/opt_cursor_size"
-            android:key="cursorSize" app:min="25" android:max="300" app:showSeekBarValue="true" android:defaultValue="50"/>
-        <!-- <EditTextPreference android:title="@string/opt_cursor_size"
+        <EditTextPreference android:title="@string/opt_cursor_size"
             android:summary="@string/opt_cursor_size_summary" android:key="cursorSize"
-            android:defaultValue="100"/> -->
+            android:defaultValue="100"/>
 
         <CheckBoxPreference android:summary="@string/opt_bursts_summary" android:key="bursts"
             android:title="@string/opt_bursts_title" android:defaultValue="true"/>
@@ -86,8 +79,6 @@
             android:summary="@string/opt_dither_summary" android:defaultValue="true"/>
         <CheckBoxPreference android:key="superSlider" android:summary="@string/opt_superSlider_summary"
             android:title="@string/opt_superSlider_title" android:defaultValue="true"/>
-        <CheckBoxPreference android:key="trianglesAnimation" android:title="@string/opt_triangles_animation_title"
-            android:summary="@string/opt_triangles_animation_summary" android:defaultValue="true"/>
 
         <PreferenceScreen android:key="color" android:title="@string/opt_combo_colors_title" android:summary="">
             <CheckBoxPreference android:key="useCustomColors" android:title="@string/opt_combo_colors_title"
@@ -109,25 +100,19 @@
     </PreferenceScreen>
 
     <PreferenceScreen android:key="sound" android:title="@string/opt_sound">
-        <SeekBarPreference android:summary="@string/opt_bgm_volume_summary" android:title="@string/opt_bgm_volume_title"
-            android:key="bgmvolume" app:showSeekBarValue="true" android:defaultValue="100"/>
-        <!-- <EditTextPreference android:title="@string/opt_bgm_volume_title"
+        <EditTextPreference android:title="@string/opt_bgm_volume_title"
             android:summary="@string/opt_bgm_volume_summary" android:key="bgmvolume"
-            android:defaultValue="100"/> -->
-        <SeekBarPreference android:summary="@string/opt_sound_volume_summary" android:title="@string/opt_sound_volume_title"
-            android:key="soundvolume" app:showSeekBarValue="true" android:defaultValue="100"/>
-        <!-- <EditTextPreference android:title="@string/opt_sound_volume_title"
+            android:defaultValue="100"/>
+        <EditTextPreference android:title="@string/opt_sound_volume_title"
             android:summary="@string/opt_sound_volume_summary" android:key="soundvolume"
-            android:defaultValue="100"/> -->
-        <SeekBarPreference android:summary="@string/opt_offset_summary" android:title="@string/opt_offset_title"
-            android:key="offset" app:min="-100" app:showSeekBarValue="true" android:defaultValue="0"/>
-        <!-- <EditTextPreference android:title="@string/opt_offset_title" android:summary="@string/opt_offset_summary"
-            android:key="offset" android:defaultValue="0"/> -->
+            android:defaultValue="100"/>
+        <EditTextPreference android:title="@string/opt_offset_title" android:summary="@string/opt_offset_summary"
+            android:key="offset" android:defaultValue="0"/>
         <ListPreference android:entries="@array/metronome_switch_names" android:title="@string/opt_metronome_switch_title"
             android:key="metronomeswitch" android:summary="@string/opt_metronome_switch_summary"
             android:defaultValue="1" android:entryValues="@array/metronome_switch_values"/>
         <CheckBoxPreference android:summary="@string/opt_sound_summary" android:title="@string/opt_sound_title"
-            android:key="beatmapSounds" android:defaultValue="true"/>
+            android:key="sound" android:defaultValue="true"/>
         <CheckBoxPreference android:key="musicpreview" android:defaultValue="true"
             android:title="@string/opt_musicpreview_title"
             android:summary="@string/opt_musicpreview_summary"/>
@@ -143,7 +128,7 @@
             android:summary="@string/opt_directory_summary"
             android:defaultValue="/sdcard/osu!droid/Songs"/>
         <CheckBoxPreference android:key="scandownload" android:summary="@string/opt_scandownload_summary"
-            android:title="@string/opt_scandownload_title" android:defaultValue="false"/>
+        android:title="@string/opt_scandownload_title" android:defaultValue="false"/>
         <Preference android:key="clear" android:title="@string/opt_clear_title"
             android:summary="@string/opt_clear_summary"/>
         <Preference android:key="clear_properties" android:title="@string/opt_clearprops_title"
@@ -158,6 +143,8 @@
         <EditTextPreference android:key="skinTopPath"
             android:title="@string/opt_skin_top_path_title"
             android:summary="@string/opt_skin_top_path_summary"/>
+        <ListPreference android:title="@string/opt_skinpath_title"
+            android:summary="@string/opt_skinpath_summary" android:key="skinPath"/>
         <CheckBoxPreference android:key="syncMusic" android:defaultValue="true"
             android:summary="@string/opt_syncmusic_summary"
             android:title="@string/opt_syncmusic_title"/>
@@ -171,9 +158,8 @@
             android:summary="@string/opt_remove_sliderlock_spinnerlock_summary" android:defaultValue="false"/>
         <CheckBoxPreference android:key="calculateSliderPathInGameStart" android:title="@string/opt_calculate_slider_path_in_game_start_title"
             android:summary="@string/opt_calculate_slider_path_in_game_start_summary" android:defaultValue="false"/>
-        <CheckBoxPreference android:key="displayScoreStatistics"
-            android:title="@string/opt_display_score_statistics_title"
-            android:summary="@string/opt_display_score_statistics_summary" android:defaultValue="true"/>
+        <CheckBoxPreference android:key="displayScorePP" android:title="@string/opt_display_score_pp_title"
+            android:summary="@string/opt_display_score_pp_summary" android:defaultValue="false"/>
         <!--CheckBoxPreference android:key="enableExtension" android:title="@string/opt_enable_extension_title"
                             android:defaultValue="false"/>
         <Preference android:key="downloadExtension" android:title="@string/opt_download_extension_title" /-->
@@ -186,10 +172,6 @@
             android:defaultValue="100" android:entryValues="@array/set_playfield_values"/>
         <CheckBoxPreference android:key="shrinkPlayfieldDownwards" android:title="@string/opt_shrink_playfield_downwards_title"
             android:summary="@string/opt_shrink_playfield_downwards_summary" android:defaultValue="false"/>
-        <CheckBoxPreference android:key="safebeatmapbg" android:title="@string/opt_safe_beatmap_bg_title"
-            android:summary="@string/opt_safe_beatmap_bg_summary" android:defaultValue="false"/>
-        <CheckBoxPreference android:key="receiveAnnouncements" android:title="@string/opt_receive_announcements_title"
-            android:summary="@string/opt_receive_announcements_summary" android:defaultValue="true"/>
     </PreferenceScreen>
 
     <Preference android:key="update" android:title="@string/opt_update_title"

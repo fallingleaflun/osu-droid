@@ -5,109 +5,106 @@ import android.content.Context;
 import android.content.SharedPreferences;
 import android.content.SharedPreferences.Editor;
 import android.os.Environment;
+import android.preference.PreferenceManager;
 import android.util.DisplayMetrics;
 
-import androidx.preference.PreferenceManager;
-
 import com.edlplan.favorite.FavoriteLibrary;
-import com.google.firebase.messaging.FirebaseMessaging;
-
-import java.io.File;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.UUID;
 
 import net.margaritov.preference.colorpicker.ColorPickerPreference;
 
 import org.anddev.andengine.engine.Engine;
 import org.anddev.andengine.util.Debug;
 
-import ru.nsu.ccfit.zuev.osu.helper.FileUtils;
+import java.util.UUID;
 
 public class Config {
-    private static String corePath,
-        defaultCorePath,
-        beatmapPath,
-        cachePath,
-        skinPath,
-        skinTopPath,
-        scorePath,
-        localUsername,
-        onlineUsername,
-        onlinePassword,
-        onlineDeviceID;
+    private static boolean DELETE_OSZ = false;
+    private static boolean SCAN_DOWNLOAD = false;
+    private static int RES_WIDTH = 1280;
+    private static int RES_HEIGHT = 720;
+    private static String corePath = Environment.getExternalStorageDirectory() + "/osu!droid/";
+    private static String beatmapPath = corePath + "Songs/";
+    private static String cachePath = corePath;
+    private static String skinPath = corePath + "Skin/";
+    private static String skinTopPath = skinPath;
+    private static String scorePath = corePath + "Scores/";
+    private static int errorMeter = 0;
+    private static int spinnerStyle = 0;
+    private static boolean showFirstApproachCircle = false;
+    private static boolean comboburst = false;
+    private static int backgroundQuality = 1;
+    private static boolean useCustomSkins = false;
+    private static boolean useCustomSounds = true;
+    private static boolean corovans = true;
+    private static float soundVolume = 1;
+    private static float bgmVolume = 1;
+    private static float offset = 0;
+    private static int skipOffset = 0;
+    private static boolean doubleSound = true;
+    private static boolean showFPS = false;
+    private static int textureQuality = 1;
+    private static int metronomeSwitch = 1;
+    private static boolean useNativePlayer = true;
+    private static float backgroundBrightness = 1;
+    private static int vbrOffset = 0;
+    private static int oggOffset = 0;
+    private static int pauseOffset = 0;
+    private static boolean sliderBorders = true;
+    private static boolean complexAnimations = true;
+    private static boolean multitouch = true;
+    private static boolean playMusicPreview = false;
+    private static String localUsername = "";
+    private static boolean showCursor = false;
+    private static boolean accurateSlider = true;
+    private static float scaleMultiplier = 0;
+    private static float playfieldSize = 1.0f;
+    private static boolean shrinkPlayfieldDownwards = false;
+    private static boolean hideNaviBar = false;
+    private static boolean showScoreboard = true;
+    private static boolean enablePP = true;
+    private static boolean enableExtension = false;
 
-    private static boolean DELETE_OSZ,
-        SCAN_DOWNLOAD,
-        showFirstApproachCircle,
-        comboburst,
-        useCustomSkins,
-        useCustomSounds,
-        corovans,
-        showFPS,
-        sliderBorders,
-        complexAnimations,
-        playMusicPreview,
-        showCursor,
-        accurateSlider,
-        shrinkPlayfieldDownwards,
-        hideNaviBar,
-        showScoreboard,
-        enablePP,
-        enableExtension,
-        loadAvatar,
-        stayOnline,
-        syncMusic,
-        burstEffects,
-        hitLighting,
-        useDither,
-        useParticles,
-        useLongTrail,
-        useCustomComboColors,
-        forceRomanized,
-        fixFrameOffset,
-        removeSliderLock,
-        calculateSliderPathInGameStart,
-        displayScoreStatistics,
-        hideReplayMarquee,
-        hideInGameUI,
-        receiveAnnouncements,
-        useSuperSlider,
-        enableStoryboard,
-        safeBeatmapBg,
-        trianglesAnimation;
+    private static String onlineUsername = "Pesets";
+    private static String onlinePassword = null;
+    private static String onlineDeviceID = null;
+    private static boolean loadAvatar = true;
+    private static boolean stayOnline = true;
 
-    private static int RES_WIDTH,
-        RES_HEIGHT,
-        errorMeter,
-        spinnerStyle,
-        backgroundQuality,
-        textureQuality,
-        metronomeSwitch;
-    
-    private static float soundVolume,
-        bgmVolume,
-        offset,
-        backgroundBrightness,
-        scaleMultiplier,
-        playfieldSize,
-        cursorSize;
-
-    private static Map<String, String> skins;
-
+    private static boolean syncMusic = true;
+    private static boolean burstEffects = false;
+    private static boolean hitLighting = false;
+    private static boolean useDither = true;//Dither技术，类似于量化压缩
+    private static boolean useParticles = false;
+    private static boolean useLongTrail = false;
+    private static boolean useCustomComboColors = false;
     private static RGBColor[] comboColors;
+    private static boolean forceRomanized = false;
+
+    private static boolean fixFrameOffset = true;
+    private static boolean removeSliderLock = false;
+    private static boolean calculateSliderPathInGameStart = false;
+    private static boolean displayScorePP = false;
+    private static boolean hideReplayMarquee = false;
+    private static boolean hideInGameUI = false;
+
+    private static float cursorSize = 1;
+
+    private static boolean useSuperSlider = true;
+
+    private static boolean enableStoryboard = false;
+
     private static Context context;
 
     public static void loadConfig(final Context context) {
         Config.context = context;
         final SharedPreferences prefs = PreferenceManager
-                .getDefaultSharedPreferences(context);
+                .getDefaultSharedPreferences(context);//临时保存一些变量的时候会用到SharedPreferences
         String s;
         // graphics
         s = prefs.getString("background", "2");
         backgroundQuality = Integer.parseInt(s);
         useCustomSkins = prefs.getBoolean("skin", false);
-        useCustomSounds = prefs.getBoolean("beatmapSounds", true);
+        useCustomSounds = prefs.getBoolean("sound", true);
         comboburst = prefs.getBoolean("comboburst", false);
         corovans = prefs.getBoolean("images", false);
         showFPS = prefs.getBoolean("fps", false);
@@ -118,43 +115,99 @@ public class Config {
         metronomeSwitch = Integer.parseInt(prefs.getString("metronomeswitch", "1"));
         showScoreboard = prefs.getBoolean("showscoreboard", true);
         enableStoryboard = prefs.getBoolean("enableStoryboard", false);
-        trianglesAnimation = prefs.getBoolean("trianglesAnimation", true);
 
         setSize();
 
+        setBackgroundBrightness(Integer.parseInt(prefs.getString(
+                "bgbrightness", "25")) / 100f);
         setPlayfieldSize(Integer.parseInt(prefs.getString(
             "playfieldsize", "100")) / 100f);
         shrinkPlayfieldDownwards = prefs.getBoolean("shrinkPlayfieldDownwards", true);
         sliderBorders = prefs.getBoolean("sliderborders", true);
         complexAnimations = prefs.getBoolean("complexanimations", true);
-        accurateSlider = true;
+        accurateSlider = true;//prefs.getBoolean("demoSpline", true);
 
         useSuperSlider = prefs.getBoolean("superSlider", false);
 
+        // sound
+        s = prefs.getString("soundvolume", "100");
+        soundVolume = 1;
         try {
-            int off = prefs.getInt("offset", 0);
-            offset = (int) (Math.signum(off) * Math.min(250, Math.abs(off)));
-            backgroundBrightness = prefs.getInt("bgbrightness", 25) / 100f;
-            soundVolume = prefs.getInt("soundvolume", 100) / 100f;
-            bgmVolume = prefs.getInt("bgmvolume", 100) / 100f;
-            cursorSize = prefs.getInt("cursorSize", 50) / 100f;
-        }catch(RuntimeException e) { // use valid integer since this makes the game crash on android m
-            prefs.edit()
-                .putInt("offset", 0)
-                .putInt("bgbrightness", 25)
-                .putInt("soundvolume", 100)
-                .putInt("bgmvolume", 100)
-                .putInt("cursorSize", 50)
-                .commit();
-            Config.loadConfig(context);
+            final int vol = Integer.parseInt(s);
+            if (vol >= 0 && vol <= 100) {
+                soundVolume = vol / 100f;
+            }
+        } catch (final NumberFormatException e) {
+            Debug.e("loadConfig: " + s + " is not a valid volume!");
         }
-        
+        // music
+        s = prefs.getString("bgmvolume", "100");
+        bgmVolume = 1;
+        try {
+            final int vol = Integer.parseInt(s);
+            if (vol >= 0 && vol <= 100) {
+                bgmVolume = vol / 100f;
+            }
+        } catch (final NumberFormatException e) {
+            Debug.e("loadConfig: " + s + " is not a valid volume!");
+        }
+        s = prefs.getString("offset", "0");
+        offset = 0;
+        try {
+            final int off = Integer.parseInt(s);
+            offset = (int) (Math.signum(off) * Math.min(250, Math.abs(off)));
+        } catch (final NumberFormatException e) {
+            Debug.e("loadConfig: " + s + " is not a valid offset!");
+        }
+        s = prefs.getString("skipoffset", "0");
+        skipOffset = 0;
+        try {
+            final int off = Integer.parseInt(s);
+            skipOffset = off;
+        } catch (final NumberFormatException e) {
+            Debug.e("loadConfig: " + s + " is not a valid offset!");
+        }
+        s = prefs.getString("vbroffset", "50");//不是很懂这个vbr，可变比特率编码
+        vbrOffset = 0;
+        try {
+            final int off = Integer.parseInt(s);
+            vbrOffset = off;
+        } catch (final NumberFormatException e) {
+            Debug.e("loadConfig: " + s + " is not a valid offset!");
+        }
+        s = prefs.getString("oggoffset", "0");
+        oggOffset = 0;
+        try {
+            final int off = Integer.parseInt(s);
+            oggOffset = off;
+        } catch (final NumberFormatException e) {
+            Debug.e("loadConfig: " + s + " is not a valid offset!");
+        }
+        s = prefs.getString("pauseoffset", "0");
+        pauseOffset = 0; // 为什么会有这么多offset
+        try {
+            final int off = Integer.parseInt(s);
+            pauseOffset = off;
+        } catch (final NumberFormatException e) {
+            Debug.e("loadConfig: " + s + " is not a valid offset!");
+        }
+        s = prefs.getString("cursorSize", "50");
+        cursorSize = 1;
+        try {
+            final int csize = Integer.parseInt(s);
+            if (csize >= 25 && csize <= 300) {
+                cursorSize = csize / 100f;
+            }
+        } catch (final NumberFormatException e) {
+            Debug.e("loadConfig: " + s + " is not a valid size!");
+        }
+        doubleSound = prefs.getBoolean("doublesound", true);
+        useNativePlayer = prefs.getBoolean("nativeplayer", true);
 
         //advanced
-        defaultCorePath = Environment.getExternalStorageDirectory() + "/osu!droid/";
-        corePath = prefs.getString("corePath", defaultCorePath);
+        corePath = prefs.getString("corePath", corePath);
         if (corePath.length() == 0) {
-            corePath = defaultCorePath;
+            corePath = Environment.getExternalStorageDirectory() + "/osu!droid/";
         }
         if (corePath.charAt(corePath.length() - 1) != '/') {
             corePath += "/";
@@ -217,21 +270,13 @@ public class Config {
         fixFrameOffset = prefs.getBoolean("fixFrameOffset", true);
         removeSliderLock = prefs.getBoolean("removeSliderLock", false);
         calculateSliderPathInGameStart = prefs.getBoolean("calculateSliderPathInGameStart", false);
-        displayScoreStatistics = prefs.getBoolean("displayScoreStatistics", false);
+        displayScorePP = prefs.getBoolean("displayScorePP", false);
         hideReplayMarquee = prefs.getBoolean("hideReplayMarquee", false);
         hideInGameUI = prefs.getBoolean("hideInGameUI", false);
-        receiveAnnouncements = prefs.getBoolean("receiveAnnouncements", true);
-        safeBeatmapBg = prefs.getBoolean("safebeatmapbg", false);
-
-        if(receiveAnnouncements) {
-            FirebaseMessaging.getInstance().subscribeToTopic("announcements");
-        }else {
-            FirebaseMessaging.getInstance().unsubscribeFromTopic("announcements"); 
-        }
 
         //Init
         onlineDeviceID = prefs.getString("installID", null);
-        if (onlineDeviceID == null) {
+        if (onlineDeviceID == null) {//随机一个UUID作为onlineDeviceID
             onlineDeviceID = UUID.randomUUID().toString().replace("-", "").substring(0, 32);
             Editor editor = prefs.edit();
             editor.putString("installID", onlineDeviceID);
@@ -251,10 +296,11 @@ public class Config {
 
         onlineUsername = prefs.getString("onlineUsername", "");
         onlinePassword = prefs.getString("onlinePassword", null);
-        stayOnline = prefs.getBoolean("stayOnline", false);
+        stayOnline = prefs.getBoolean("stayOnline", true);
         loadAvatar = prefs.getBoolean("loadAvatar",false);
     }
 
+    // 下面都是setter和getter吧
     public static void setSize() {
         final DisplayMetrics dm = new DisplayMetrics();
         ((Activity) context).getWindowManager().getDefaultDisplay().getMetrics(dm);
@@ -295,8 +341,8 @@ public class Config {
         return calculateSliderPathInGameStart;
     }
 
-    public static boolean isDisplayScoreStatistics() {
-        return displayScoreStatistics;
+    public static boolean isDisplayScorePP() {
+        return displayScorePP;
     }
 
     public static boolean isEnableExtension() {
@@ -305,6 +351,14 @@ public class Config {
 
     public static void setEnableExtension(boolean enableExtension) {
         Config.enableExtension = enableExtension;
+    }
+
+    public static int getSkipOffset() {
+        return skipOffset;
+    }
+
+    public static void setSkipOffset(final int skipOffset) {
+        Config.skipOffset = skipOffset;
     }
 
     public static boolean isShowFPS() {
@@ -321,6 +375,14 @@ public class Config {
 
     public static void setShowScoreboard(final boolean showScoreboard) {
         Config.showScoreboard = showScoreboard;
+    }
+
+    public static boolean isDoubleSound() {
+        return doubleSound;
+    }
+
+    public static void setDoubleSound(final boolean doubleSound) {
+        Config.doubleSound = doubleSound;
     }
 
     public static boolean isCorovans() {
@@ -428,11 +490,19 @@ public class Config {
     }
 
     public static int getTextureQuality() {
-        return textureQuality;
+        return 1;
     }
 
     public static void setTextureQuality(final int textureQuality) {
         Config.textureQuality = textureQuality;
+    }
+
+    public static boolean isUseNativePlayer() {
+        return useNativePlayer;
+    }
+
+    public static void setUseNativePlayer(final boolean useNativePlayer) {
+        Config.useNativePlayer = useNativePlayer;
     }
 
     public static float getBackgroundBrightness() {
@@ -441,6 +511,14 @@ public class Config {
 
     public static void setBackgroundBrightness(final float backgroundBrightness) {
         Config.backgroundBrightness = backgroundBrightness;
+    }
+
+    public static int getVbrOffset() {
+        return vbrOffset;
+    }
+
+    public static void setVbrOffset(final int vbrOffect) {
+        Config.vbrOffset = vbrOffect;
     }
 
     public static boolean isSliderBorders() {
@@ -457,6 +535,30 @@ public class Config {
 
     public static void setComplexAnimations(final boolean complexAnimations) {
         Config.complexAnimations = complexAnimations;
+    }
+
+    public static boolean isMultitouch() {
+        return multitouch;
+    }
+
+    public static void setMultitouch(final boolean multitouch) {
+        Config.multitouch = multitouch;
+    }
+
+    public static int getOggOffset() {
+        return oggOffset;
+    }
+
+    public static void setOggOffset(final int oggOffset) {
+        Config.oggOffset = oggOffset;
+    }
+
+    public static int getPauseOffset() {
+        return pauseOffset;
+    }
+
+    public static void setPauseOffset(final int pauseOffset) {
+        Config.pauseOffset = pauseOffset;
     }
 
     public static boolean isPlayMusicPreview() {
@@ -730,51 +832,4 @@ public class Config {
     public static void setHideInGameUI(boolean hideInGameUI) {
         Config.hideInGameUI = hideInGameUI;
     }
-
-    public static boolean isReceiveAnnouncements() {
-        return receiveAnnouncements;
-    }
-
-    public static void setReceiveAnnouncements(boolean receiveAnnouncements) {
-        Config.receiveAnnouncements = receiveAnnouncements;
-    }
-
-    public static boolean isSafeBeatmapBg() {
-        return safeBeatmapBg;
-    }
-
-    public static void setSafeBeatmapBg(boolean safeBeatmapBg) {
-        Config.safeBeatmapBg = safeBeatmapBg;
-    }
-
-    public static boolean isTrianglesAnimation() {
-        return trianglesAnimation;
-    }
-
-    public static void setTrianglesAnimation(boolean trianglesAnimation) {
-        Config.trianglesAnimation = trianglesAnimation;
-    }
-
-    public static String getDefaultCorePath() {
-        return defaultCorePath;
-    }
-
-    public static void loadSkins() {
-        File[] folders = FileUtils.listFiles(new File(skinTopPath), file -> file.isDirectory() && !file.getName().startsWith("."));
-        skins = new HashMap<String, String>();
-        for(File folder : folders) {
-            skins.put(folder.getName(), folder.getPath());
-            Debug.i("skins: " + folder.getName() + " - " + folder.getPath());
-        }
-    }
-
-    public static Map<String, String> getSkins(){
-        return skins;
-    }
-
-    public static void addSkin(String name, String path) {
-        if(skins == null) skins = new HashMap<String, String>();
-        skins.put(name, path);
-    }
-
 }

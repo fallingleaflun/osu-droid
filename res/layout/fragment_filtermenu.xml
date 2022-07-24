@@ -53,8 +53,8 @@
                         android:ems="10"
                         android:hint="@string/menu_search_filter" />
 
-                    <Button
-                        android:id="@+id/sortButton"
+                    <TextView
+                        android:id="@+id/sortText"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginLeft="10dp"

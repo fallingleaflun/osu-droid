@@ -16,7 +16,6 @@ import java.nio.ByteBuffer;
 import ru.nsu.ccfit.zuev.audio.Status;
 
 public class BassAudioFunc {
-
     public static final int WINDOW_FFT = 1024;
 
     private int channel = 0;
@@ -83,6 +82,7 @@ public class BassAudioFunc {
     }
 
     public boolean preLoad(String filePath, float speed, boolean enableNC) {
+        //tzl: 读取音频文件并且根据模式改变freq和tempo
         if (speed == 1.0f) {
             return preLoad(filePath, PlayMode.MODE_NONE);
         }
@@ -128,14 +128,14 @@ public class BassAudioFunc {
             BASS.BASS_ChannelSetSync(channel, BASS.BASS_SYNC_END, 0, new BASS.SYNCPROC() {
                 @Override
                 public void SYNCPROC(int handle, int channel, int data, Object user) {
-                    if (!isGaming) {
+                    if (!isGaming) {//如果不在游戏(在主界面)，则播放结束后播放下一首，否则stop
                         broadcastManager.sendBroadcast(new Intent("Notify_next"));
                     } else {
                         stop();
                     }
                 }
             }, 0);
-            return BASS.BASS_ChannelPlay(channel, true);
+            return BASS.BASS_ChannelPlay(channel, true);//Restart playback from the beginning?
         }
         return false;
     }
@@ -154,7 +154,8 @@ public class BassAudioFunc {
                 skipPosition = BASS.BASS_ChannelSeconds2Bytes(channel, ms / 1000.0);
             if (mode == PlayMode.MODE_NONE)
                 return BASS.BASS_ChannelSetPosition(channel, skipPosition, BASS.BASS_POS_BYTE);
-            else return BASS.BASS_ChannelSetPosition(channel, skipPosition, BASS.BASS_POS_DECODE);
+            else
+                return BASS.BASS_ChannelSetPosition(channel, skipPosition, BASS.BASS_POS_DECODE);//tzl:非普通模式不能直接寻址，需要解码到某个位置
         }
         return false;
     }
@@ -226,11 +227,11 @@ public class BassAudioFunc {
     }
 
     public float getVolume() {
-        BASS.FloatValue volume = new BASS.FloatValue();
+        Float volume = 0f;
         if (channel != 0) {
             BASS.BASS_ChannelGetAttribute(channel, BASS.BASS_ATTRIB_VOL, volume);
         }
-        return volume.value;
+        return volume;
     }
 
     public void setVolume(float volume) {

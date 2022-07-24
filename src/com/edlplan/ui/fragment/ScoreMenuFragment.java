@@ -57,7 +57,7 @@ public class ScoreMenuFragment extends BaseFragment {
                     }
                     OsuDroidReplayPack.packTo(file, replay);
 
-                    Snackbar.make(v, String.format(getResources().getString(R.string.frg_score_menu_export_succeed), file.getAbsolutePath()), 2750).setAction("Share", new View.OnClickListener() {
+                    Snackbar.make(v, String.format(getResources().getString(R.string.frg_score_menu_export_succeed), file.getAbsolutePath()), Snackbar.LENGTH_LONG).setAction("分享", new View.OnClickListener() {
                         @Override
                         public void onClick(View v) {
                             Intent intent = new Intent();
@@ -86,10 +86,10 @@ public class ScoreMenuFragment extends BaseFragment {
                     } else {
                         try {
                             if (OdrDatabase.get().deleteReplay(scoreId) == 0) {
-                                Snackbar.make(v, "Failed to delete replay!", 1500)
+                                Snackbar.make(v, "Failed to delete replay!", Snackbar.LENGTH_SHORT)
                                         .show();
                             } else {
-                                Snackbar.make(v, R.string.menu_deletescore_delete_success, 1500)
+                                Snackbar.make(v, getResources().getString(R.string.menu_deletescore_delete_success), Snackbar.LENGTH_SHORT)
                                         .show();
                             }
                             ScoreMenuFragment.this.dismiss();

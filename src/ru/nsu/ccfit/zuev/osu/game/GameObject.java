@@ -2,23 +2,23 @@ package ru.nsu.ccfit.zuev.osu.game;
 
 import android.graphics.PointF;
 
-import ru.nsu.ccfit.zuev.osu.scoring.Replay;
+import ru.nsu.ccfit.zuev.osu.scoring.Replay.ReplayObjectData;
 
 public abstract class GameObject {
     protected boolean endsCombo;
     protected boolean autoPlay = false;
     protected float hitTime = 0;
     protected int id = -1;
-    protected Replay.ReplayObjectData replayObjectData = null;
+    protected ReplayObjectData replayData = null;
     protected boolean startHit = false;
     protected PointF pos = new PointF();
 
-    public Replay.ReplayObjectData getReplayData() {
-        return replayObjectData;
+    public ReplayObjectData getReplayData() {
+        return replayData;
     }
 
-    public void setReplayData(Replay.ReplayObjectData replayObjectData) {
-        this.replayObjectData = replayObjectData;
+    public void setReplayData(ReplayObjectData replayData) {
+        this.replayData = replayData;
     }
 
     public void setEndsCombo(final boolean endsCombo) {

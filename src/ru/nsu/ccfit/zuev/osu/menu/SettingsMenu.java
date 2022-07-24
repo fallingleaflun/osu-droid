@@ -1,124 +1,50 @@
 package ru.nsu.ccfit.zuev.osu.menu;
 
-import android.animation.Animator;
-import android.app.Activity;
 import android.content.Intent;
 import android.os.Bundle;
-import android.text.InputType;
-import android.view.View;
-import android.view.animation.Animation;
-import android.view.animation.AnimationUtils;
-import android.widget.ImageButton;
-import android.widget.TextView;
+import android.preference.EditTextPreference;
+import android.preference.ListPreference;
+import android.preference.Preference;
+import android.preference.PreferenceActivity;
+import android.view.KeyEvent;
 
-import androidx.annotation.AnimRes;
-import androidx.annotation.DrawableRes;
-import androidx.annotation.IdRes;
-import androidx.preference.EditTextPreference;
-import androidx.preference.Preference;
-import androidx.preference.PreferenceScreen;
-
-import com.edlplan.framework.easing.Easing;
-import com.edlplan.ui.BaseAnimationListener;
-import com.edlplan.ui.SkinPathPreference;
-import com.edlplan.ui.fragment.SettingsFragment;
-import com.edlplan.ui.EasingHelper;
-
-import com.google.android.material.snackbar.Snackbar;
+import com.tencent.bugly.beta.Beta;
+import com.umeng.analytics.MobclickAgent;
 
 import java.io.File;
+import java.util.Arrays;
 
 import ru.nsu.ccfit.zuev.osu.Config;
 import ru.nsu.ccfit.zuev.osu.GlobalManager;
 import ru.nsu.ccfit.zuev.osu.LibraryManager;
 import ru.nsu.ccfit.zuev.osu.MainActivity;
 import ru.nsu.ccfit.zuev.osu.PropertiesLibrary;
-import ru.nsu.ccfit.zuev.osu.ResourceManager;
-import ru.nsu.ccfit.zuev.skins.SkinManager;
 import ru.nsu.ccfit.zuev.osu.ToastLogger;
-import ru.nsu.ccfit.zuev.osu.Updater;
-// import ru.nsu.ccfit.zuev.osu.game.SpritePool;
 import ru.nsu.ccfit.zuev.osu.helper.StringTable;
 import ru.nsu.ccfit.zuev.osu.online.OnlineInitializer;
 import ru.nsu.ccfit.zuev.osuplus.R;
 
-public class SettingsMenu extends SettingsFragment {
-
-    private PreferenceScreen mParentScreen, parentScreen;
-    private boolean isOnNestedScreen = false;
-    private Activity mActivity;
-
-    public void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-        mActivity = GlobalManager.getInstance().getMainActivity();
-    }
+public class SettingsMenu extends PreferenceActivity {
 
     @Override
-    public void onCreatePreferences(Bundle savedInstanceState, String rootKey) {
-        setPreferencesFromResource(R.xml.options, rootKey);
+    protected void onCreate(final Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
 
-        SkinPathPreference skinPath = (SkinPathPreference) findPreference("skinPath");
-        skinPath.reloadSkinList();
-        skinPath.setOnPreferenceChangeListener((preference, newValue) -> {
-            if(GlobalManager.getInstance().getSkinNow() != newValue.toString()) {
-                // SpritePool.getInstance().purge();
-                GlobalManager.getInstance().setSkinNow(Config.getSkinPath());
-                SkinManager.getInstance().clearSkin();
-                ResourceManager.getInstance().loadSkin(newValue.toString());
-                GlobalManager.getInstance().getEngine().getTextureManager().reloadTextures();
-                mActivity.startActivity(new Intent(mActivity, MainActivity.class));
-                Snackbar.make(mActivity.findViewById(android.R.id.content),
-                    StringTable.get(R.string.message_loaded_skin), 1500).show();
-            }
-            return true;
-        });
+        resetBetaStrings();
+        addPreferencesFromResource(R.xml.options);
+        reloadSkinList();
 
-        // screens
-        mParentScreen = parentScreen = getPreferenceScreen();
-
-        ((PreferenceScreen) findPreference("onlineOption")).setOnPreferenceClickListener(preference -> {
-            setPreferenceScreen((PreferenceScreen) preference);
-            return true;
-        });
-
-        ((PreferenceScreen) findPreference("general")).setOnPreferenceClickListener(preference -> {
-            setPreferenceScreen((PreferenceScreen) preference);
-            return true;
-        });
-
-        ((PreferenceScreen) findPreference("color")).setOnPreferenceClickListener(preference -> {
-            parentScreen = (PreferenceScreen) findPreference("general");
-            setPreferenceScreen((PreferenceScreen) preference);
-            return true;
-        });
-
-        ((PreferenceScreen) findPreference("sound")).setOnPreferenceClickListener(preference -> {
-            setPreferenceScreen((PreferenceScreen) preference);
-            return true;
-        });
-
-        ((PreferenceScreen) findPreference("beatmaps")).setOnPreferenceClickListener(preference -> {
-            setPreferenceScreen((PreferenceScreen) preference);
-            return true;
-        });
-
-        ((PreferenceScreen) findPreference("advancedopts")).setOnPreferenceClickListener(preference -> {
-            setPreferenceScreen((PreferenceScreen) preference);
-            return true;
-        });
-        // screens END
-
-        final EditTextPreference onlinePassword = (EditTextPreference) findPreference("onlinePassword");
-        onlinePassword.setOnBindEditTextListener(editText -> {
-            editText.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_PASSWORD);
-        });
+		/*if (MP3Decoder.isAvailable == false) {
+			final Preference pref = findPreference("nativeplayer");
+			pref.setEnabled(false);
+		}*/
 
         final EditTextPreference skinToppref = (EditTextPreference) findPreference("skinTopPath");
         skinToppref.setOnPreferenceChangeListener((preference, newValue) -> {
             if (newValue.toString().trim().length() == 0) {
                 skinToppref.setText(Config.getCorePath() + "Skin/");
-                Config.loadConfig(mActivity);
-                skinPath.reloadSkinList();
+                Config.loadConfig(SettingsMenu.this);
+                reloadSkinList();
                 return false;
             }
 
@@ -131,162 +57,134 @@ public class SettingsMenu extends SettingsFragment {
             }
 
             skinToppref.setText(newValue.toString());
-            Config.loadConfig(mActivity);
-            skinPath.reloadSkinList();
+            Config.loadConfig(SettingsMenu.this);
+            reloadSkinList();
             return false;
         });
 
         final Preference pref = findPreference("clear");
         pref.setOnPreferenceClickListener(preference -> {
-            LibraryManager.getInstance().clearCache();
+            LibraryManager.getInstance().clearCache(SettingsMenu.this);
             return true;
         });
         final Preference clearProps = findPreference("clear_properties");
         clearProps.setOnPreferenceClickListener(preference -> {
             PropertiesLibrary.getInstance()
-                    .clear(mActivity);
+                    .clear(SettingsMenu.this);
             return true;
         });
         final Preference register = findPreference("registerAcc");
         register.setOnPreferenceClickListener(preference -> {
-            OnlineInitializer initializer = new OnlineInitializer(getActivity());
+            OnlineInitializer initializer = new OnlineInitializer(SettingsMenu.this);
             initializer.createInitDialog();
             return true;
         });
-
+        //final Preference downloadExtension = findPreference("downloadExtension");
+        //downloadExtension.setOnPreferenceClickListener(preference -> EdExtensionHelper.downloadExtension());
+		/*
+		final Preference clearPP = findPreference("clearPP");
+		clearPP.setOnPreferenceClickListener(preference -> {
+			Dialog dialog=new Dialog(this);
+			dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
+			dialog.setContentView(R.layout.dialog_clear_pp);
+			dialog.setCancelable(true);
+			dialog.setCanceledOnTouchOutside(true);
+			dialog.findViewById(R.id.button_cancel).setOnClickListener(view -> dialog.dismiss());
+			dialog.findViewById(R.id.button_ok).setOnClickListener(new View.OnClickListener() {
+			    boolean clicked=false;
+                @Override
+                public void onClick(View view) {
+                    if(clicked){
+                        PPHelper.clearPP();
+                        Toast.makeText(SettingsMenu.this,R.string.dialog_delete_pp_deleted,Toast.LENGTH_SHORT).show();
+                        dialog.dismiss();
+                    }else{
+                        clicked=true;
+                        ((TextView)dialog.findViewById(R.id.dialog_clear_pp_msg)).setText(R.string.dialog_delete_pp_make_sure);
+                    }
+                }
+            });
+			dialog.show();
+			return true;
+		});
+		*/
         final Preference update = findPreference("update");
         update.setOnPreferenceClickListener(preference -> {
-            Updater.getInstance().checkForUpdates();
-            return true;
-        });
-
-        final Preference dither = findPreference("dither");
-        dither.setOnPreferenceChangeListener((preference, newValue) -> {
-            if (Config.isUseDither() != (boolean) newValue) {
-                GlobalManager.getInstance().getMainScene().restart();
-            }
+            Beta.checkUpgrade();
             return true;
         });
     }
 
-    public void onNavigateToScreen(PreferenceScreen preferenceScreen) {
-        if(preferenceScreen.getKey() != null) {
-            if(!isOnNestedScreen) {
-                isOnNestedScreen = true;
-                animateBackButton(R.drawable.back_black);
-            }
-            setTitle(preferenceScreen.getTitle().toString());
-            for(int v : new int[]{android.R.id.list_container, R.id.title}) {
-                animateView(v, R.anim.slide_in_right);
-            }
-        }
-    }
-
-    private void animateBackButton(@DrawableRes int newDrawable) {
-        Animation animation = AnimationUtils.loadAnimation(mActivity, R.anim.rotate_360);
-        animation.setAnimationListener(new Animation.AnimationListener() {
-            public void onAnimationEnd(Animation animation) {
-                ImageButton backButton = (ImageButton) findViewById(R.id.back_button);
-                backButton.setImageDrawable(mActivity.getResources().getDrawable(newDrawable));
-            }
-            public void onAnimationRepeat(Animation animation) {}
-            public void onAnimationStart(Animation animation) {}
-        });
-        ((ImageButton) findViewById(R.id.back_button)).startAnimation(animation);
-    }
-
-    private void animateView(@IdRes int viewId, @AnimRes int anim) {
-        findViewById(viewId).startAnimation(AnimationUtils.loadAnimation(mActivity, anim));
-    }
-
-    private void setTitle(String title) {
-       ((TextView) findViewById(R.id.title)).setText(title); 
+    @Override
+    public void onResume() {
+        super.onResume();
+        MobclickAgent.onResume(this);
     }
 
     @Override
-    public void callDismissOnBackPress() {
-        navigateBack();
-    }
-
-    // only supports 1 child with an optional grandchild
-    private void navigateBack() {
-        for(int v : new int[]{android.R.id.list_container, R.id.title}) {
-            animateView(v, R.anim.slide_in_left);
-        }
-
-        if(parentScreen.getKey() != null) {
-            setPreferenceScreen(parentScreen);
-            setTitle(parentScreen.getTitle().toString());
-            parentScreen = mParentScreen;
-            return;
-        }
-
-        if(isOnNestedScreen) {
-            isOnNestedScreen = false;
-            animateBackButton(R.drawable.close_black);
-            setPreferenceScreen(mParentScreen);
-            setTitle(StringTable.get(R.string.menu_settings_title));
-        }else {
-           dismiss();
-        }
+    public void onPause() {
+        super.onPause();
+        MobclickAgent.onPause(this);
     }
 
     @Override
-    protected void onLoadView() {
-        ((ImageButton) findViewById(R.id.back_button)).setOnClickListener(v -> {
-            navigateBack();
-        });
-    }
-
-    protected void playOnLoadAnim() {
-        View body = findViewById(R.id.body);
-        body.setAlpha(0);
-        body.setTranslationX(400);
-        body.animate().cancel();
-        body.animate()
-                .translationX(0)
-                .alpha(1)
-                .setInterpolator(EasingHelper.asInterpolator(Easing.InOutQuad))
-                .setDuration(150)
-                .start();
-        playBackgroundHideInAnim(150);
-    }
-
-    protected void playOnDismissAnim(Runnable action) {
-        View body = findViewById(R.id.body);
-        body.animate().cancel();
-        body.animate()
-                .translationXBy(400)
-                .alpha(0)
-                .setDuration(200)
-                .setInterpolator(EasingHelper.asInterpolator(Easing.InOutQuad))
-                .setListener(new BaseAnimationListener() {
-                    @Override
-                    public void onAnimationEnd(Animator animation) {
-                        if (action != null) {
-                            action.run();
-                        }
-                    }
-                })
-                .start();
-        playBackgroundHideOutAnim(200);
-    }
-
-    @Override
-    public void show() {
-        super.show();
-    }
-
-    @Override
-    public void dismiss() {
-        playOnDismissAnim(() -> {
-            Config.loadConfig(mActivity);
+    public boolean onKeyDown(final int keyCode, final KeyEvent event) {
+        if (keyCode == KeyEvent.KEYCODE_BACK) {
+            Config.loadConfig(this);
+            final Intent intent = new Intent(GlobalManager.getInstance().getMainActivity(),
+                    MainActivity.class);
+            GlobalManager.getInstance().getMainActivity().startActivity(intent);
             GlobalManager.getInstance().getMainScene().reloadOnlinePanel();
             GlobalManager.getInstance().getMainScene().loadTimeingPoints(false);
-            GlobalManager.getInstance().getSongService().setVolume(Config.getBgmVolume());
+            GlobalManager.getInstance().getSongService().setIsSettingMenu(false);
             GlobalManager.getInstance().getSongService().setGaming(false);
-            SettingsMenu.super.dismiss();
-        });
+            finish();
+            return true;
+        }
+        return super.onKeyDown(keyCode, event);
     }
 
+    private void resetBetaStrings() {
+        Beta.strToastYourAreTheLatestVersion = StringTable.get(R.string.beta_you_are_the_latest_version);
+        Beta.strToastCheckUpgradeError = StringTable.get(R.string.beta_check_upgrade_error);
+        Beta.strToastCheckingUpgrade = StringTable.get(R.string.beta_checking_upgrade);
+
+//      just wasn't sure if "NOTIFICATION" translations might exceed given spaces. Toast strings are otherwise
+
+//		Beta.strNotificationDownloading = StringTable.get(R.string.beta_downloading);
+//		Beta.strNotificationClickToView = StringTable.get(R.string.beta_click_to_view);
+//		Beta.strNotificationClickToInstall = StringTable.get(R.string.beta_click_to_install);
+//		Beta.strNotificationClickToRetry = StringTable.get(R.string.beta_click_to_retry);
+//		Beta.strNotificationClickToContinue = StringTable.get(R.string.beta_click_to_continue);
+//		Beta.strNotificationDownloadSucc = StringTable.get(R.string.beta_download_success);
+//		Beta.strNotificationDownloadError = StringTable.get(R.string.beta_download_error);
+//		Beta.strNotificationHaveNewVersion = StringTable.get(R.string.beta_have_new_version);
+
+    }
+
+    @SuppressWarnings("ResultOfMethodCallIgnored")
+    private void reloadSkinList() {
+        try {
+            final ListPreference skinPathPref = (ListPreference) findPreference("skinPath");
+            File skinMain = new File(Config.getSkinTopPath());
+            if (!skinMain.exists()) skinMain.mkdir();
+            File[] skinFolders = skinMain.listFiles(file -> file.isDirectory() && !file.getName().startsWith("."));
+            CharSequence[] entries = new CharSequence[skinFolders.length + 1];
+            CharSequence[] entryValues = new CharSequence[skinFolders.length + 1];
+            entries[0] = skinMain.getName() + " (Default)";
+            entryValues[0] = skinMain.getPath();
+            for (int i = 1; i < entries.length; i++) {
+                entries[i] = skinFolders[i - 1].getName();
+                entryValues[i] = skinFolders[i - 1].getPath();
+            }
+            Arrays.sort(entries, 1, entries.length);
+            Arrays.sort(entryValues, 1, entryValues.length);
+            skinPathPref.setEntries(entries);
+            skinPathPref.setEntryValues(entryValues);
+            skinPathPref.setValue(Config.getSkinPath());
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
 }

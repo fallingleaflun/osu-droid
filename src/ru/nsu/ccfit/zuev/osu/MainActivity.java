@@ -1,9 +1,9 @@
 package ru.nsu.ccfit.zuev.osu;
 
 import android.Manifest;
-import android.accessibilityservice.AccessibilityServiceInfo;
 import android.annotation.SuppressLint;
 import android.app.AlertDialog;
+import android.content.BroadcastReceiver;
 import android.content.ComponentName;
 import android.content.ContentResolver;
 import android.content.Context;
@@ -13,13 +13,15 @@ import android.content.IntentFilter;
 import android.content.ServiceConnection;
 import android.content.SharedPreferences;
 import android.content.SharedPreferences.Editor;
-import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.graphics.PixelFormat;
 import android.os.*;
+import android.preference.PreferenceManager;
 
-import androidx.preference.PreferenceManager;
+import androidx.annotation.NonNull;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
 import androidx.core.content.PermissionChecker;
 
 import android.util.DisplayMetrics;
@@ -27,19 +29,17 @@ import android.view.Gravity;
 import android.view.KeyEvent;
 import android.view.View;
 import android.view.ViewGroup;
-import android.view.WindowManager;
-import android.view.accessibility.AccessibilityManager;
 import android.widget.EditText;
 import android.widget.FrameLayout;
 import android.widget.RelativeLayout;
 
 import android.widget.Toast;
 import com.edlplan.ui.ActivityOverlay;
-import com.edlplan.ui.fragment.ConfirmDialogFragment;
 import com.edlplan.ui.fragment.BuildTypeNoticeFragment;
-
-import com.google.firebase.analytics.FirebaseAnalytics;
-import com.google.firebase.crashlytics.FirebaseCrashlytics;
+import com.squareup.leakcanary.LeakCanary;
+import com.tencent.bugly.Bugly;
+import com.umeng.analytics.MobclickAgent;
+import com.umeng.commonsdk.UMConfigure;
 
 import org.anddev.andengine.engine.Engine;
 import org.anddev.andengine.engine.camera.Camera;
@@ -63,12 +63,10 @@ import java.math.RoundingMode;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
+import java.util.zip.ZipFile;
 
-import net.lingala.zip4j.ZipFile;
-
+import pub.devrel.easypermissions.AppSettingsDialog;
+import pub.devrel.easypermissions.EasyPermissions;
 import ru.nsu.ccfit.zuev.audio.BassAudioPlayer;
 import ru.nsu.ccfit.zuev.audio.serviceAudio.SaveServiceObject;
 import ru.nsu.ccfit.zuev.audio.serviceAudio.SongService;
@@ -76,7 +74,6 @@ import ru.nsu.ccfit.zuev.osu.async.AsyncTaskLoader;
 import ru.nsu.ccfit.zuev.osu.async.OsuAsyncCallback;
 import ru.nsu.ccfit.zuev.osu.async.SyncTaskManager;
 import ru.nsu.ccfit.zuev.osu.game.SpritePool;
-import ru.nsu.ccfit.zuev.osu.helper.FileUtils;
 import ru.nsu.ccfit.zuev.osu.helper.InputManager;
 import ru.nsu.ccfit.zuev.osu.helper.StringTable;
 import ru.nsu.ccfit.zuev.osu.menu.FilterMenu;
@@ -84,31 +81,26 @@ import ru.nsu.ccfit.zuev.osu.menu.LoadingScreen;
 import ru.nsu.ccfit.zuev.osu.menu.ModMenu;
 import ru.nsu.ccfit.zuev.osu.menu.SplashScene;
 import ru.nsu.ccfit.zuev.osu.online.OnlineManager;
-import ru.nsu.ccfit.zuev.osuplus.BuildConfig;
+import ru.nsu.ccfit.zuev.osuplus.BuildConfig;//自动生成的
 import ru.nsu.ccfit.zuev.osuplus.R;
 
 public class MainActivity extends BaseGameActivity implements
         IAccelerometerListener {
     public static SongService songService;
     public ServiceConnection connection;
+    public BroadcastReceiver onNotifyButtonClick;
     private PowerManager.WakeLock wakeLock = null;
     private String beatmapToAdd = null;
     private SaveServiceObject saveServiceObject;
     private IntentFilter filter;
-    private final Handler handler = new Handler(Looper.getMainLooper());
-    private FirebaseAnalytics analytics;
-    private FirebaseCrashlytics crashlytics;
     private boolean willReplay = false;
     private static boolean activityVisible = true;
-    private boolean autoclickerDialogShown = false;
 
     @Override
     public Engine onLoadEngine() {
         if (!checkPermissions()) {
             return null;
         }
-        analytics = FirebaseAnalytics.getInstance(this);
-        crashlytics = FirebaseCrashlytics.getInstance();
         Config.loadConfig(this);
         initialGameDirectory();
         //Debug.setDebugLevel(Debug.DebugLevel.NONE);
@@ -116,8 +108,9 @@ public class MainActivity extends BaseGameActivity implements
         ToastLogger.init(this);
         SyncTaskManager.getInstance().init(this);
         InputManager.setContext(this);
+        // 初始化BuglySDK
+        Bugly.init(getApplicationContext(), "d1e89e4311", false);
         OnlineManager.getInstance().Init(getApplicationContext());
-        crashlytics.setUserId(Config.getOnlineDeviceID());
 
         final DisplayMetrics dm = new DisplayMetrics();
         getWindowManager().getDefaultDisplay().getMetrics(dm);
@@ -132,6 +125,7 @@ public class MainActivity extends BaseGameActivity implements
         wakeLock = manager.newWakeLock(PowerManager.SCREEN_DIM_WAKE_LOCK,
                 "osudroid:osu");
 
+        //tzl: 搞一个照相机还有Engine
         Camera mCamera = new SmoothCamera(0, 0, Config.getRES_WIDTH(),
                 Config.getRES_HEIGHT(), 0, 1800, 1);
         final EngineOptions opt = new EngineOptions(true,
@@ -143,18 +137,22 @@ public class MainActivity extends BaseGameActivity implements
         opt.getRenderOptions().disableExtensionVertexBufferObjects();
         opt.getTouchOptions().enableRunOnUpdateThread();
         final Engine engine = new Engine(opt);
-        try {
-            if (MultiTouch.isSupported(this)) {
-                engine.setTouchController(new MultiTouchController());
-            } else {
+
+        //tzl: 告诉全局管理器照相机，Engine还有MainActivity
+        if (Config.isMultitouch()) {
+            try {
+                if (MultiTouch.isSupported(this)) {
+                    engine.setTouchController(new MultiTouchController());
+                } else {
+                    ToastLogger.showText(
+                            StringTable.get(R.string.message_error_multitouch),
+                            false);
+                }
+            } catch (final MultiTouchException e) {
                 ToastLogger.showText(
                         StringTable.get(R.string.message_error_multitouch),
                         false);
             }
-        } catch (final MultiTouchException e) {
-            ToastLogger.showText(
-                    StringTable.get(R.string.message_error_multitouch),
-                    false);
         }
         GlobalManager.getInstance().setCamera(mCamera);
         GlobalManager.getInstance().setEngine(engine);
@@ -252,7 +250,7 @@ public class MainActivity extends BaseGameActivity implements
 
             //TODO removed auto registration at first launch
             /*OnlineInitializer initializer = new OnlineInitializer(this);
-            initializer.createInitDialog();*/
+			initializer.createInitDialog();*/
         }
     }
 
@@ -266,7 +264,6 @@ public class MainActivity extends BaseGameActivity implements
         //ResourceManager.getInstance().loadHighQualityAsset("solo", "solo.png");
         ResourceManager.getInstance().loadHighQualityAsset("exit", "exit.png");
         ResourceManager.getInstance().loadHighQualityAsset("options", "options.png");
-        ResourceManager.getInstance().loadHighQualityAsset("offline-avatar", "offline-avatar.png");
         ResourceManager.getInstance().loadHighQualityAsset("star", "gfx/star.png");
         ResourceManager.getInstance().loadHighQualityAsset("music_play", "music_play.png");
         ResourceManager.getInstance().loadHighQualityAsset("music_pause", "music_pause.png");
@@ -299,10 +296,7 @@ public class MainActivity extends BaseGameActivity implements
         new AsyncTaskLoader().execute(new OsuAsyncCallback() {
             public void run() {
                 GlobalManager.getInstance().init();
-                analytics.logEvent(FirebaseAnalytics.Event.APP_OPEN, null);
                 GlobalManager.getInstance().setLoadingProgress(50);
-                Config.loadSkins();
-                checkNewSkins();
                 checkNewBeatmaps();
                 if (!LibraryManager.getInstance().loadLibraryCache(MainActivity.this, true)) {
                     LibraryManager.getInstance().scanLibrary(MainActivity.this);
@@ -310,7 +304,7 @@ public class MainActivity extends BaseGameActivity implements
                 }
             }
 
-            public void onComplete() {  
+            public void onComplete() {
                 GlobalManager.getInstance().setInfo("");
                 GlobalManager.getInstance().setLoadingProgress(100);
                 ResourceManager.getInstance().loadFont("font", null, 28, Color.WHITE);
@@ -318,7 +312,6 @@ public class MainActivity extends BaseGameActivity implements
                 GlobalManager.getInstance().getMainScene().loadBeatmap();
                 initPreferences();
                 availableInternalMemory();
-                initAccessibilityDetector();
                 if (willReplay) {
                     GlobalManager.getInstance().getMainScene().watchReplay(beatmapToAdd);
                     willReplay = false;
@@ -338,9 +331,15 @@ public class MainActivity extends BaseGameActivity implements
         double minMem = 1073741824D; //1 GiB = 1073741824 bytes
         File internal = Environment.getDataDirectory();
         StatFs stat = new StatFs(internal.getPath());
-        availableMemory = (double) stat.getAvailableBytes();
+        if(Build.VERSION.SDK_INT >= 18) {
+            availableMemory = (double) stat.getAvailableBytes();
+        } else {
+            long blockSize = stat.getBlockSize();
+            long availableBlocks = stat.getAvailableBlocks();
+            availableMemory = (double) (availableBlocks * blockSize);
+        }
         String toastMessage = String.format(StringTable.get(R.string.message_low_storage_space), df.format(availableMemory / minMem));
-        if(availableMemory < 0.5 * minMem) { //I set 512MiB as a minimum
+        if(availableMemory < 0.5*minMem) { //I set 512MiB as a minimum
             Toast.makeText(this, toastMessage, Toast.LENGTH_SHORT).show();
         }
         Debug.i("Free Space: " + df.format(availableMemory / minMem));
@@ -349,6 +348,7 @@ public class MainActivity extends BaseGameActivity implements
     @SuppressLint("ResourceType")
     @Override
     protected void onSetContentView() {
+        //tzl:MainActivity在这里填充Layout
         this.mRenderSurfaceView = new RenderSurfaceView(this);
         if(Config.isUseDither()) {
             this.mRenderSurfaceView.setEGLConfigChooser(8,8,8,8,24,0);
@@ -358,6 +358,7 @@ public class MainActivity extends BaseGameActivity implements
         }
         this.mRenderSurfaceView.setRenderer(this.mEngine);
 
+        //tzl：看不懂这个layout，不会重叠吗？ActivityOverlay又是什么
         RelativeLayout layout = new RelativeLayout(this);
         layout.setBackgroundColor(Color.argb(255, 0, 0, 0));
         layout.addView(
@@ -366,10 +367,10 @@ public class MainActivity extends BaseGameActivity implements
                         ViewGroup.LayoutParams.MATCH_PARENT,
                         ViewGroup.LayoutParams.MATCH_PARENT){{
                     addRule(RelativeLayout.CENTER_IN_PARENT);
-                }});
+                }});//tzl:直接铺满
 
         FrameLayout frameLayout = new FrameLayout(this);
-        frameLayout.setId(0x28371);
+        frameLayout.setId(0x28371);//tzl:这个值有什么由来吗
         layout.addView(frameLayout, new RelativeLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
 
         View c = new View(this);
@@ -389,35 +390,44 @@ public class MainActivity extends BaseGameActivity implements
         }
     }
 
+    public static boolean isBeatmapValid(File file) {
+        ZipFile zipfile = null;
+        try {
+            zipfile = new ZipFile(file);
+            zipfile.close();
+            return true;
+        } catch (IOException e) {
+            return false;
+        }
+    }
+
     public void checkNewBeatmaps() {
-        GlobalManager.getInstance().setInfo("Checking for new maps...");
+        GlobalManager.getInstance().setInfo("Checking new maps...");
         final File mainDir = new File(Config.getCorePath());
         if (beatmapToAdd != null) {
             File file = new File(beatmapToAdd);
-            if (file.getName().toLowerCase().endsWith(".osz")) {
+            if (file.getName().endsWith(".osz")) {
                 ToastLogger.showText(
                         StringTable.get(R.string.message_lib_importing),
                         false);
-
-                if(FileUtils.extractZip(beatmapToAdd, Config.getBeatmapPath())) {
+                if (OSZParser.parseOSZ(MainActivity.this, beatmapToAdd)) {
                     String folderName = beatmapToAdd.substring(0, beatmapToAdd.length() - 4);
                     // We have imported the beatmap!
                     ToastLogger.showText(
                             StringTable.format(R.string.message_lib_imported, folderName),
                             true);
                 }
-
-                // LibraryManager.getInstance().sort();
+                LibraryManager.getInstance().sort();
                 LibraryManager.getInstance().savetoCache(MainActivity.this);
             } else if (file.getName().endsWith(".odr")) {
                 willReplay = true;
             }
         } else if (mainDir.exists() && mainDir.isDirectory()) {
-            File[] filelist = FileUtils.listFiles(mainDir, ".osz");
+            File[] filelist = mainDir.listFiles();
             final ArrayList<String> beatmaps = new ArrayList<String>();
             for (final File file : filelist) {
-                ZipFile zip = new ZipFile(file);
-                if(zip.isValidZipFile()) {
+                if (isBeatmapValid(file)
+                        && file.getName().endsWith(".osz")) {
                     beatmaps.add(file.getPath());
                 }
             }
@@ -425,10 +435,10 @@ public class MainActivity extends BaseGameActivity implements
             File beatmapDir = new File(Config.getBeatmapPath());
             if (beatmapDir.exists()
                     && beatmapDir.isDirectory()) {
-                filelist = FileUtils.listFiles(beatmapDir, ".osz");
+                filelist = beatmapDir.listFiles();
                 for (final File file : filelist) {
-                    ZipFile zip = new ZipFile(file);
-                    if(zip.isValidZipFile()) {
+                    if (isBeatmapValid(file)
+                            && file.getName().endsWith(".osz")) {
                         beatmaps.add(file.getPath());
                     }
                 }
@@ -438,97 +448,37 @@ public class MainActivity extends BaseGameActivity implements
             if (Config.isSCAN_DOWNLOAD()
                     && downloadDir.exists()
                     && downloadDir.isDirectory()) {
-                filelist = FileUtils.listFiles(downloadDir, ".osz");
+                filelist = downloadDir.listFiles();
                 for (final File file : filelist) {
-                    ZipFile zip = new ZipFile(file);
-                    if(zip.isValidZipFile()) {
+                    if (isBeatmapValid(file)
+                            && file.getName().endsWith(".osz")) {
                         beatmaps.add(file.getPath());
                     }
                 }
             }
 
             if (beatmaps.size() > 0) {
-                // final boolean deleteOsz = Config.isDELETE_OSZ();
-                // Config.setDELETE_OSZ(true);
+                final boolean deleteOsz = Config.isDELETE_OSZ();
+                Config.setDELETE_OSZ(true);
                 ToastLogger.showText(StringTable.format(
                         R.string.message_lib_importing_several,
                         beatmaps.size()), false);
-                for (final String beatmap : beatmaps) {
-                    if(FileUtils.extractZip(beatmap, Config.getBeatmapPath())) {
-                        String folderName = beatmap.substring(0, beatmap.length() - 4);
+                for (final String s : beatmaps) {
+                    if (OSZParser.parseOSZ(MainActivity.this, s)) {
+                        String folderName = s.substring(0, s.length() - 4);
                         // We have imported the beatmap!
                         ToastLogger.showText(
                                 StringTable.format(R.string.message_lib_imported, folderName),
                                 true);
                     }
                 }
-                // Config.setDELETE_OSZ(deleteOsz);
+                Config.setDELETE_OSZ(deleteOsz);
 
-                // LibraryManager.getInstance().sort();
-                LibraryManager.getInstance().savetoCache(MainActivity.this);
+                LibraryManager.getInstance().sort();
+                LibraryManager.getInstance().savetoCache(
+                        MainActivity.this);
             }
         }
-    }
-
-    public void checkNewSkins() {
-        GlobalManager.getInstance().setInfo("Checking new skins...");
-
-        final ArrayList<String> skins = new ArrayList<>();
-
-        // Scanning skin directory
-        final File skinDir = new File(Config.getSkinTopPath());
-
-        if (skinDir.exists() && skinDir.isDirectory()) {
-            final File[] files = FileUtils.listFiles(skinDir, ".osk");
-
-            for (final File file : files) {
-                ZipFile zip = new ZipFile(file);
-                if(zip.isValidZipFile()) {
-                    skins.add(file.getPath());
-                }
-            }
-        }
-
-        // Scanning download directory
-        final File downloadDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
-
-        if (Config.isSCAN_DOWNLOAD()
-                && downloadDir.exists()
-                && downloadDir.isDirectory()) {
-            final File[] files = FileUtils.listFiles(downloadDir, ".osk");
-
-            for (final File file : files) {
-                ZipFile zip = new ZipFile(file);
-                if(zip.isValidZipFile()) {
-                    skins.add(file.getPath());
-                }
-            }
-        }
-
-        if (skins.size() > 0) {
-            ToastLogger.showText(StringTable.format(
-                    R.string.message_skin_importing_several,
-                    skins.size()), false);
-
-            for (final String skin : skins) {
-                if (FileUtils.extractZip(skin, Config.getSkinTopPath())) {
-                    String folderName = skin.substring(0, skin.length() - 4);
-                    // We have imported the skin!
-                    ToastLogger.showText(
-                            StringTable.format(R.string.message_lib_imported, folderName),
-                            true);
-                    Config.addSkin(folderName.substring(folderName.lastIndexOf("/") + 1), skin);
-                }
-            }
-        }
-    }
-
-    public Handler getHandler() {
-        return handler;
-    }
-
-    public FirebaseAnalytics getAnalytics() {
-        return analytics;
     }
 
     public PowerManager.WakeLock getWakeLock() {
@@ -542,10 +492,10 @@ public class MainActivity extends BaseGameActivity implements
     @Override
     protected void onCreate(Bundle pSavedInstanceState) {
         super.onCreate(pSavedInstanceState);
+
         if (this.mEngine == null) {
             return;
         }
-
         if (BuildConfig.DEBUG) {
             //Toast.makeText(this,"this is debug version",Toast.LENGTH_LONG).show();
             try {
@@ -558,6 +508,26 @@ public class MainActivity extends BaseGameActivity implements
             }
         }
         onBeginBindService();
+    }
+
+    public void onCreateNotifyReceiver() {
+        if (filter == null) {
+            //过滤器创建
+            filter = new IntentFilter();
+            filter.addAction("Notify_cancel");
+        }
+
+        //按钮广播监听
+        onNotifyButtonClick = new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context context, Intent intent) {
+                if (intent.getAction().equals("Notify_cancel")) {
+                    songService.stop();
+                    GlobalManager.getInstance().getMainScene().exit();
+                }
+            }
+        };
+        registerReceiver(onNotifyButtonClick, filter);
     }
 
     public void onBeginBindService() {
@@ -579,6 +549,9 @@ public class MainActivity extends BaseGameActivity implements
             };
 
             bindService(new Intent(MainActivity.this, SongService.class), connection, BIND_AUTO_CREATE);
+            if (Build.VERSION.SDK_INT > 10) {
+                onCreateNotifyReceiver();
+            }
         }
         GlobalManager.getInstance().setSongService(songService);
         GlobalManager.getInstance().setSaveServiceObject(saveServiceObject);
@@ -586,10 +559,10 @@ public class MainActivity extends BaseGameActivity implements
 
     @Override
     protected void onStart() {
-//        this.enableAccelerometerSensor(this);
+//		this.enableAccelerometerSensor(this);
         if (getIntent().getAction() != null
-                && getIntent().getAction().equals(Intent.ACTION_VIEW)) {
-            if (ContentResolver.SCHEME_FILE.equals(getIntent().getData().getScheme())) {
+                && getIntent().getAction().equals(Intent.ACTION_VIEW)) {//可能是传一个Intent过来才启动的Activity
+            if (ContentResolver.SCHEME_FILE.equals(getIntent().getData().getScheme())) {//
                 beatmapToAdd = getIntent().getData().getPath();
             }
             if (BuildConfig.DEBUG) {
@@ -606,14 +579,20 @@ public class MainActivity extends BaseGameActivity implements
         if (this.mEngine == null) {
             return;
         }
-        activityVisible = true;
+        if (GlobalManager.getInstance().getSkinNow() != null) {
+            if (GlobalManager.getInstance().getSkinNow() != Config.getSkinPath()) {
+                GlobalManager.getInstance().setSkinNow(Config.getSkinPath());
+                ToastLogger.showText(StringTable.get(R.string.message_loading_skin), true);
+                ResourceManager.getInstance().loadCustomSkin(Config.getSkinPath());
+            }
+        }
         if (GlobalManager.getInstance().getEngine() != null && GlobalManager.getInstance().getGameScene() != null
                 && GlobalManager.getInstance().getEngine().getScene() == GlobalManager.getInstance().getGameScene().getScene()) {
             GlobalManager.getInstance().getEngine().getTextureManager().reloadTextures();
         }
         if (GlobalManager.getInstance().getMainScene() != null) {
             if (songService != null && Build.VERSION.SDK_INT > 10) {
-                if (songService.hideNotification()) {
+                if (songService.hideNotifyPanel()) {
                     if (wakeLock != null && wakeLock.isHeld()) wakeLock.release();
                     GlobalManager.getInstance().getMainScene().loadBeatmapInfo();
                     GlobalManager.getInstance().getMainScene().loadTimeingPoints(false);
@@ -623,12 +602,57 @@ public class MainActivity extends BaseGameActivity implements
                 }
             }
         }
+        activityVisible = true;
+        //HideNaviBar
+        if (Config.isHideNaviBar()) {
+            if (Build.VERSION.SDK_INT >= 11) {
+                // BEGIN_INCLUDE (get_current_ui_flags)
+                // The UI options currently enabled are represented by a bitfield.
+                // getSystemUiVisibility() gives us that bitfield.
+                int uiOptions = this.getWindow().getDecorView().getSystemUiVisibility();
+                int newUiOptions = uiOptions;
+                // END_INCLUDE (get_current_ui_flags)
+                // BEGIN_INCLUDE (toggle_ui_flags)
+                boolean isImmersiveModeEnabled =
+                        ((uiOptions | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY) == uiOptions);
+
+                // Navigation bar hiding:  Backwards compatible to ICS.
+                if (Build.VERSION.SDK_INT >= 14) {
+                    if((newUiOptions | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION) != newUiOptions){
+                        newUiOptions ^= View.SYSTEM_UI_FLAG_HIDE_NAVIGATION;
+                    }
+                }
+
+                // Status bar hiding: Backwards compatible to Jellybean
+                if (Build.VERSION.SDK_INT >= 16) {
+                    if((newUiOptions | View.SYSTEM_UI_FLAG_FULLSCREEN) != newUiOptions){
+                        newUiOptions ^= View.SYSTEM_UI_FLAG_FULLSCREEN;
+                    }
+                }
+
+                // Immersive mode: Backward compatible to KitKat.
+                // Note that this flag doesn't do anything by itself, it only augments the behavior
+                // of HIDE_NAVIGATION and FLAG_FULLSCREEN.  For the purposes of this sample
+                // all three flags are being toggled together.
+                // Note that there are two immersive mode UI flags, one of which is referred to as "sticky".
+                // Sticky immersive mode differs in that it makes the navigation and status bars
+                // semi-transparent, and the UI flag does not get cleared when the user interacts with
+                // the screen.
+                if (Build.VERSION.SDK_INT >= 18) {
+                    if((newUiOptions | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY) != newUiOptions){
+                        newUiOptions ^= View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY;
+                    }
+                }
+
+                this.getWindow().getDecorView().setSystemUiVisibility(newUiOptions);
+                //END_INCLUDE (set_ui_flags)
+            }
+        }
     }
-    
+
     @Override
     public void onPause() {
         super.onPause();
-        activityVisible = false;
         if (this.mEngine == null) {
             return;
         }
@@ -639,20 +663,35 @@ public class MainActivity extends BaseGameActivity implements
         }
         if (GlobalManager.getInstance().getMainScene() != null) {
             BeatmapInfo beatmapInfo = GlobalManager.getInstance().getMainScene().beatmapInfo;
-            if (songService != null && beatmapInfo != null && !songService.isGaming()) {
-                songService.showNotification();
+            if (songService != null && beatmapInfo != null && !songService.isGaming() && !songService.isSettingMenu()) {
+                if (Build.VERSION.SDK_INT > 10) {
+                    songService.showNotifyPanel();
 
-                if (wakeLock == null) {
-                    PowerManager powerManager = (PowerManager) getSystemService(POWER_SERVICE);
-                    wakeLock = powerManager.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "osudroid:MainActivity");
+                    if (wakeLock == null) {
+                        PowerManager powerManager = (PowerManager) getSystemService(POWER_SERVICE);
+                        wakeLock = powerManager.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "osudroid:MainActivity");
+                    }
+                    wakeLock.acquire();
+
+                    if (beatmapInfo.getArtistUnicode() != null && beatmapInfo.getTitleUnicode() != null) {
+                        songService.updateTitleText(beatmapInfo.getTitleUnicode(), beatmapInfo.getArtistUnicode());
+                    } else if (beatmapInfo.getArtist() != null && beatmapInfo.getTitle() != null) {
+                        songService.updateTitleText(beatmapInfo.getTitle(), beatmapInfo.getArtist());
+                    } else {
+                        songService.updateTitleText("QAQ I cant load info", " ");
+                    }
+                    songService.updateCoverImage(beatmapInfo.getTrack(0).getBackground());
+                    songService.updateStatus();
+                } else {
+                    songService.stop();
                 }
-                wakeLock.acquire();
             } else {
                 if (songService != null) {
                     songService.pause();
                 }
             }
         }
+        activityVisible = false;
     }
 
     @Override
@@ -676,15 +715,16 @@ public class MainActivity extends BaseGameActivity implements
             }
         }
         if (hasFocus && Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT && Config.isHideNaviBar()) {
-            getWindow().getDecorView().setSystemUiVisibility(
+        	getWindow().getDecorView().setSystemUiVisibility(
                 View.SYSTEM_UI_FLAG_LAYOUT_STABLE
                 | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
                 | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
                 | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
                 | View.SYSTEM_UI_FLAG_FULLSCREEN
                 | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY);
-        }
+		}
     }
+
 
     @Override
     public void onAccelerometerChanged(final AccelerometerData arg0) {
@@ -704,10 +744,6 @@ public class MainActivity extends BaseGameActivity implements
             return false;
         }
 
-        if(autoclickerDialogShown) {
-            return false;
-        }
-
         if (event.getAction() != KeyEvent.ACTION_DOWN) {
             return super.onKeyDown(keyCode, event);
         }
@@ -718,6 +754,7 @@ public class MainActivity extends BaseGameActivity implements
         if (event.getAction() == TouchEvent.ACTION_DOWN && keyCode == KeyEvent.KEYCODE_BACK && ActivityOverlay.onBackPress()) {
             return true;
         }
+
 
         if (GlobalManager.getInstance().getGameScene() != null
                 && (keyCode == KeyEvent.KEYCODE_BACK || keyCode == KeyEvent.KEYCODE_MENU)
@@ -805,71 +842,9 @@ public class MainActivity extends BaseGameActivity implements
         return super.onKeyDown(keyCode, event);
     }
 
-    private void forcedExit() {
-        if(GlobalManager.getInstance().getEngine().getScene() == GlobalManager.getInstance().getGameScene().getScene()) {
-            GlobalManager.getInstance().getGameScene().quit();
-        }
-        GlobalManager.getInstance().getEngine().setScene(GlobalManager.getInstance().getMainScene().getScene());
-        GlobalManager.getInstance().getMainScene().exit();
-    }
-
-    private void initAccessibilityDetector() {
-        ScheduledExecutorService scheduledExecutorService =
-            Executors.newSingleThreadScheduledExecutor();
-        scheduledExecutorService
-            .scheduleAtFixedRate(() -> {
-                AccessibilityManager manager = (AccessibilityManager)
-                    getSystemService(Context.ACCESSIBILITY_SERVICE);
-                List<AccessibilityServiceInfo> activeServices = new ArrayList<AccessibilityServiceInfo>(
-                    manager.getEnabledAccessibilityServiceList(
-                        AccessibilityServiceInfo.FEEDBACK_ALL_MASK));
-
-                for(AccessibilityServiceInfo activeService : activeServices) {
-                     int capabilities = activeService.getCapabilities();
-                    if((AccessibilityServiceInfo.CAPABILITY_CAN_PERFORM_GESTURES & capabilities)
-                            == AccessibilityServiceInfo.CAPABILITY_CAN_PERFORM_GESTURES) {
-                        if(!autoclickerDialogShown && activityVisible) {
-                            runOnUiThread(() -> {
-                                ConfirmDialogFragment dialog = new ConfirmDialogFragment()
-                                    .setMessage(R.string.message_autoclicker_detected);
-                                dialog.setOnDismissListener(() -> forcedExit());
-                                dialog.showForResult(isAccepted -> forcedExit());
-                            });
-                            autoclickerDialogShown = true;
-                        }
-                    }
-                }
-            }, 0, 1, TimeUnit.SECONDS);
-    }
-
-    public long getVersionCode() {
-        long versionCode = 0;
-        try {
-            PackageInfo packageInfo = getPackageManager().getPackageInfo(
-                getPackageName(), 0);
-            if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-                versionCode = packageInfo.getLongVersionCode();
-            }else {
-                versionCode = packageInfo.versionCode;
-            }
-        } catch (PackageManager.NameNotFoundException e) {
-            Debug.e("PackageManager: " + e.getMessage(), e);
-        }
-        return versionCode;
-    }
-
-    public float getRefreshRate() {
-        return ((WindowManager) getSystemService(Context.WINDOW_SERVICE))
-            .getDefaultDisplay()
-            .getRefreshRate();
-    }
-
     private boolean checkPermissions() {
-        if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.R &&
-                Environment.isExternalStorageManager()) {
-            return true;
-        }else if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R &&
-                PermissionChecker.checkCallingOrSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE)
+        String[] permissions = new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE};
+        if (PermissionChecker.checkCallingOrSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE)
                 == PermissionChecker.PERMISSION_GRANTED) {
             return true;
         } else {

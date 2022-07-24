@@ -33,7 +33,7 @@ import ru.nsu.ccfit.zuev.osu.async.AsyncTaskLoader;
 import ru.nsu.ccfit.zuev.osu.async.OsuAsyncCallback;
 import ru.nsu.ccfit.zuev.osu.async.SyncTaskManager;
 import ru.nsu.ccfit.zuev.osu.game.GameHelper;
-import ru.nsu.ccfit.zuev.osu.helper.FileUtils;
+import ru.nsu.ccfit.zuev.osu.helper.MD5Calcuator;
 import ru.nsu.ccfit.zuev.osu.helper.StringTable;
 import ru.nsu.ccfit.zuev.osu.online.OnlineManager;
 import ru.nsu.ccfit.zuev.osu.scoring.ScoreLibrary;
@@ -271,7 +271,7 @@ public class ScoreBoard implements ScrollDetector.IScrollDetectorListener {
 
             public void run() {
                 File trackFile = new File(track.getFilename());
-                String hash = FileUtils.getMD5Checksum(trackFile);
+                String hash = MD5Calcuator.getFileMD5(trackFile);
                 ArrayList<String> scores;
 
                 try {
@@ -400,26 +400,26 @@ public class ScoreBoard implements ScrollDetector.IScrollDetectorListener {
             scoresSet.moveToPosition(i);
             final int scoreID = scoresSet.getInt(0);
 
-            String totalScore = formatScore(scoresSet.getInt(scoresSet.getColumnIndexOrThrow("score")));
-            long currTotalScore = scoresSet.getLong(scoresSet.getColumnIndexOrThrow("score"));
+            String totalScore = formatScore(scoresSet.getInt(scoresSet.getColumnIndex("score")));
+            long currTotalScore = scoresSet.getLong(scoresSet.getColumnIndex("score"));
             String titleStr = "#"
                     + (i + 1)
                     + " "
-                    + scoresSet.getString(scoresSet.getColumnIndexOrThrow("playername"))
+                    + scoresSet.getString(scoresSet.getColumnIndex("playername"))
                     + "\n"
                     + StringTable.format(R.string.menu_score,
-                    totalScore, scoresSet.getInt(scoresSet.getColumnIndexOrThrow("combo")));
+                    totalScore, scoresSet.getInt(scoresSet.getColumnIndex("combo")));
             long diffTotalScore = currTotalScore - lastTotalScore;
-            @SuppressLint("DefaultLocale") String accStr = ConvertModString(scoresSet.getString(scoresSet.getColumnIndexOrThrow("mode"))) + "\n"
-                    + String.format("%.2f", GameHelper.Round( scoresSet.getFloat(scoresSet.getColumnIndexOrThrow("accuracy")) * 100, 2)) + "%" + "\n"
+            @SuppressLint("DefaultLocale") String accStr = ConvertModString(scoresSet.getString(scoresSet.getColumnIndex("mode"))) + "\n"
+                    + String.format("%.2f", GameHelper.Round( scoresSet.getFloat(scoresSet.getColumnIndex("accuracy")) * 100, 2)) + "%" + "\n"
                     + (lastTotalScore == 0 ? "-" : ((diffTotalScore != 0 ? "+" : "") + diffTotalScore));
             lastTotalScore = currTotalScore;
-            initSprite(i, titleStr, accStr, scoresSet.getString(scoresSet.getColumnIndexOrThrow("mark")),
+            initSprite(i, titleStr, accStr, scoresSet.getString(scoresSet.getColumnIndex("mark")),
                     false, scoreID, null, null);
             scoreItems[i] = new ScoreBoardItems();
-            scoreItems[i].set(scoresSet.getString(scoresSet.getColumnIndexOrThrow("playername")),
-                    scoresSet.getInt(scoresSet.getColumnIndexOrThrow("combo")),
-                    scoresSet.getInt(scoresSet.getColumnIndexOrThrow("score")),
+            scoreItems[i].set(scoresSet.getString(scoresSet.getColumnIndex("playername")),
+                    scoresSet.getInt(scoresSet.getColumnIndex("combo")),
+                    scoresSet.getInt(scoresSet.getColumnIndex("score")),
                     scoreID);
         }
         scoresSet.close();
@@ -582,9 +582,9 @@ public class ScoreBoard implements ScrollDetector.IScrollDetectorListener {
                 if (avatarTask.getStatus() != AsyncTask.Status.FINISHED) {
                     isCanceled = true;
                     avatarTask.cancel(true);
-                    /* if (OnlineManager.get != null) {
+                    if (OnlineManager.get != null) {
                         OnlineManager.get.abort();
-                    } */
+                    }
                 }
             }
         }
@@ -676,7 +676,7 @@ public class ScoreBoard implements ScrollDetector.IScrollDetectorListener {
 
         public Avatar(String userName, String avaUrl) {
             this.userName = userName;
-            this.avaUrl = "https://" + OnlineManager.hostname + "/user/avatar/?s=100&id=" + avaUrl;
+            this.avaUrl = "https://secure.gravatar.com/avatar/" + avaUrl + ".jpg?s=100";
         }
 
         public String getUserName() {

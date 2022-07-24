@@ -3,8 +3,7 @@ package ru.nsu.ccfit.zuev.osu;
 import android.app.Activity;
 import android.content.SharedPreferences;
 import android.content.res.AssetManager;
-
-import androidx.preference.PreferenceManager;
+import android.preference.PreferenceManager;
 
 import org.anddev.andengine.util.Debug;
 

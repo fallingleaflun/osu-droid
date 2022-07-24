@@ -95,5 +95,4 @@ public class ConfirmDialogFragment extends BaseFragment {
     public interface OnResult {
         void onAccept(boolean isAccepted);
     }
-
 }
