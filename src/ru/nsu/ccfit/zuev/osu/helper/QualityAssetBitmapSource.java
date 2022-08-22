@@ -47,7 +47,7 @@ public class QualityAssetBitmapSource extends BaseTextureAtlasSource implements
 
         InputStream in = null;
         try {
-            in = pContext.getAssets().open(pAssetPath);
+            in = pContext.getAssets().open(pAssetPath);//可以直接通过AssetManager.open在asset中的文件
             BitmapFactory.decodeStream(in, null, decodeOptions);
         } catch (final IOException e) {
             // Debug.e("Failed loading Bitmap in AssetBitmapTextureAtlasSource. AssetPath: " + pAssetPath, e);

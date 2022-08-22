@@ -4,6 +4,7 @@ import java.io.Serializable;
 import java.util.ArrayList;
 
 public class BeatmapInfo implements Serializable {
+    //tzl: 是一个Serializable, 姑且理解为Bean
     private static final long serialVersionUID = -3865268984942011628L;
     private final ArrayList<TrackInfo> tracks = new ArrayList<TrackInfo>();
     private String title;

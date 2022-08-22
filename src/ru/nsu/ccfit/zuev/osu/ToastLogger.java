@@ -8,6 +8,7 @@ import java.util.ArrayList;
 import ru.nsu.ccfit.zuev.osu.helper.StringTable;
 
 public class ToastLogger implements Runnable {
+    //tzl: 估计是因为toast要用到activity，但是使用的时候可能不会持有activity,所以选择搞了一个runnable持有activity，利用runOnUiThread()显示
     private static ToastLogger instance = null;
     Activity activty;
     String message = "";

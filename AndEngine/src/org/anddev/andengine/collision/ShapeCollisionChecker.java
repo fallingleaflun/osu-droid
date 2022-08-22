@@ -82,6 +82,7 @@ public class ShapeCollisionChecker extends BaseCollisionChecker {
 	}
 
 	public static boolean checkContains(final float[] pVertices, final int pVerticesLength, final float pX, final float pY) {
+		//tzl: pVertices是Scene坐标系中的坐标列表, 此函数是要判断pX, pY是否在这些点围成的图形的内部(在边界上也算在内部)
 		int edgeResultSum = 0;
 
 		for(int i = pVerticesLength - 4; i >= 0; i -= 2) {

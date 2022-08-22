@@ -37,10 +37,10 @@ import ru.nsu.ccfit.zuev.osu.helper.ScaledBitmapSource;
 public class ResourceManager {
     private static ResourceManager mgr = new ResourceManager();
     private final Map<String, Font> fonts = new HashMap<String, Font>();
-    private final Map<String, TextureRegion> textures = new HashMap<String, TextureRegion>();
-    private final Map<String, BassSoundProvider> sounds = new HashMap<String, BassSoundProvider>();
-    private final Map<String, BassSoundProvider> customSounds = new HashMap<String, BassSoundProvider>();
-    private final Map<String, TextureRegion> customTextures = new HashMap<String, TextureRegion>();
+    private final Map<String, TextureRegion> textures = new HashMap<String, TextureRegion>();//tzl: 加载了的纹理
+    private final Map<String, BassSoundProvider> sounds = new HashMap<String, BassSoundProvider>();//tzl: 加载了的音效
+    private final Map<String, BassSoundProvider> customSounds = new HashMap<String, BassSoundProvider>();//tzl: 加载了的自定义音效，如果有，那么key肯定在sounds中也出现过
+    private final Map<String, TextureRegion> customTextures = new HashMap<String, TextureRegion>();//tzl: 加载了的自定义纹理，如果有，那么key肯定在textures中也出现过
     private final Map<String, Integer> customFrameCount = new HashMap<String, Integer>();
     private Engine engine;
     private Context context;
@@ -100,7 +100,7 @@ public class ResourceManager {
 //		textures.put("pause-overlay", null);
     }
 
-    public void loadCustomSkin(String folder) {
+    public void loadCustomSkin(String folder) {//tzl: 在MainActivity.onResume里面调用这个加载新皮肤
 
         if (!folder.endsWith("/")) folder += "/";
 
@@ -116,7 +116,7 @@ public class ResourceManager {
         }
         if (skinFiles != null) {
             JSONObject skinjson = null;
-            File skinJson = new File(folder, "skin.json");
+            File skinJson = new File(folder, "skin.json");//tzl: 用json保存皮肤的信息
             if (skinJson.exists()) {
                 try {
                     skinjson = new JSONObject(SkinJson.readFull(skinJson));
@@ -126,9 +126,9 @@ public class ResourceManager {
                 }
             }
             if (skinjson == null) skinjson = new JSONObject();
-            SkinJson.get().loadSkinJson(skinjson);
+            SkinJson.get().loadSkinJson(skinjson);//tzl: 如果已经有json，就读到内存中作为SkinJson单例，否则用默认参数初始化SkinJson单例
         }
-        final Map<String, File> availableFiles = new HashMap<String, File>();
+        final Map<String, File> availableFiles = new HashMap<String, File>();//tzl: 遍历一遍把所有有用的文件存到这个Map中
         if (skinFiles != null) {
             for (final File f : skinFiles) {
                 if (f.isFile()) {
@@ -137,12 +137,13 @@ public class ResourceManager {
                         continue;
                     }
                     if (f.getName().length() < 5) continue;
-                    final String filename = f.getName().substring(0, f.getName().length() - 4);
+                    final String filename = f.getName().substring(0, f.getName().length() - 4);//tzl: 这个长度-4取出扩展名的做法感觉以后扩展的时候会出bug
                     availableFiles.put(filename, f);
                     //if ((filename.startsWith("hit0") || filename.startsWith("hit50") || filename.startsWith("hit100") || filename.startsWith("hit300"))){
                     //    availableFiles.put(filename + "-0", f);
                     //}
 
+                    //tzl: 意思是如果有多个文件只以第一个为准？
                     if (filename.equals("hitcircle")) {
                         if (!availableFiles.containsKey("sliderstartcircle")) {
                             availableFiles.put("sliderstartcircle", f);
@@ -168,19 +169,19 @@ public class ResourceManager {
         try {
             for (final String s : context.getAssets().list("gfx")) {
                 final String name = s.substring(0, s.length() - 4);
-                if (Config.isCorovans() == false) {
+                if (Config.isCorovans() == false) {// tzl:这corovans是什么意思？是否改变count1...ready的资源的意思？
                     if (name.equals("count1") || name.equals("count2")
                             || name.equals("count3") || name.equals("go")
                             || name.equals("ready")) {
                         continue;
                     }
                 }
-                if (availableFiles.containsKey(name)) {
-                    loadTexture(name, availableFiles.get(name).getPath(), true);
-                    if (Character.isDigit(name.charAt(name.length() - 1))) {
+                if (availableFiles.containsKey(name)) {//tzl: 用户的自定义素材里面有名为name的自定义素材
+                    loadTexture(name, availableFiles.get(name).getPath(), true);// tzl: 把纹理放到GPU的关键函数
+                    if (Character.isDigit(name.charAt(name.length() - 1))) {//tzl: 处理结尾是数字的图片
                         noticeFrameCount(name);
                     }
-                } else {
+                } else {//tzl: 否则使用gfx里面的默认素材
                     loadTexture(name, "gfx/" + s, false);
                 }
             }
@@ -191,6 +192,7 @@ public class ResourceManager {
                                 availableFiles.containsKey("scorebar-kidanger2") ? "scorebar-kidanger2" : "scorebar-kidanger"
                         ).getPath(), true);
             }
+            //tzl: 下面这段不知道为什么有那么多文件，但是逻辑很简单，跳过
             if (availableFiles.containsKey("comboburst"))
                 loadTexture("comboburst", availableFiles.get("comboburst").getPath(), true);
             else unloadTexture("comboburst");
@@ -218,7 +220,6 @@ public class ResourceManager {
                     loadTexture(textureName, availableFiles.get(textureName).getPath(), true);
                 else unloadTexture(textureName);
             }
-            //
             for (int i = 0; i < 60; i++) {
                 String textureName = "hit0-" + i;
                 if (availableFiles.containsKey(textureName))
@@ -266,13 +267,13 @@ public class ResourceManager {
             Debug.e("Resources: " + e.getMessage(), e);
         }
 
-        SkinManager.getInstance().presetFrameCount();
+        SkinManager.getInstance().presetFrameCount();//tzl: frameCount是什么
 
         try {
             // TODO: buggy?
             for (final String s : context.getAssets().list("sfx")) {
                 final String name = s.substring(0, s.length() - 4);
-                if (availableFiles.containsKey(name)) {
+                if (availableFiles.containsKey(name)) {//tzl: 逻辑和上面加载texture差不多, 关键是下面这个loadSound
                     loadSound(name, availableFiles.get(name).getPath(), true);
                 } else {
                     loadSound(name, "sfx/" + s, false);
@@ -302,7 +303,7 @@ public class ResourceManager {
 //		textures.put("pause-overlay", null);
     }
 
-    private void noticeFrameCount(final String name) {
+    private void noticeFrameCount(final  String name) {
         String resnameWN;
         if (name.contains("-") == false) {
             resnameWN = name.substring(0, name.length() - 1);
@@ -331,7 +332,7 @@ public class ResourceManager {
         final BitmapTextureAtlas texture = new BitmapTextureAtlas(512, 512,
                 TextureOptions.BILINEAR_PREMULTIPLYALPHA);
         Font font;
-        if (file == null) {//下载下来的这个版本就没有font文件，用的是这段默认设置
+        if (file == null) {//tzl: 下载下来的这个版本就没有font文件，用的是这段默认设置
             font = new Font(texture, Typeface.create(Typeface.DEFAULT,
                     Typeface.NORMAL), size, true, color);
         } else {
@@ -428,16 +429,17 @@ public class ResourceManager {
                                      final boolean external, final TextureOptions opt, Engine engine) {
         int tw = 4, th = 4;
         TextureRegion region;
-        if (external) {
+        if (external) {//图片文件是否不在asset内
             final File texFile = new File(file);
             if (texFile.exists() == false) {
                 return textures.values().iterator().next();
             }
             final QualityFileBitmapSource source = new QualityFileBitmapSource(
-                    texFile);
+                    texFile);//tzl: 读取Bitmap用的函数
             if (source.getWidth() == 0 || source.getHeight() == 0) {
                 return null;
             }
+            //tzl：看不懂这里为什么要两倍
             while (tw < source.getWidth()) {
                 tw *= 2;
             }
@@ -449,9 +451,10 @@ public class ResourceManager {
             while (source.preload() == false && errorCount < 3) {
                 errorCount++;
             }
-            if (errorCount >= 3) {
+            if (errorCount >= 3) {//tzl: 为什么超过三次加载失败才返回null?事不过三?
                 return null;
             }
+            //tzl: 下面三行是关键
             final BitmapTextureAtlas tex = new BitmapTextureAtlas(tw, th, opt);
             region = TextureRegionFactory.createFromSource(tex, source, 0, 0,
                     false);
@@ -490,6 +493,7 @@ public class ResourceManager {
             textures.put(resname, region);
         }
 
+        //tzl: 不懂这个操作，超过1要减1?
         if (region.getWidth() > 1) {
             region.setWidth(region.getWidth() - 1);
         }
@@ -610,7 +614,7 @@ public class ResourceManager {
                 if (!snd.prepare(file)) {
                     // 外部文件加载失败尝试自带皮肤
                     String shortName = file.substring(file.lastIndexOf("/") + 1);
-                    if (!snd.prepare(context.getAssets(), "sfx/" + shortName)) {
+                    if (!snd.prepare(context.getAssets(), "sfx/" + shortName)) {//tzl: 关键函数
                         return null;
                     }
                 }

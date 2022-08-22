@@ -24,12 +24,14 @@ public class TextureManager {
 	// Fields
 	// ===========================================================
 
-	private final HashSet<ITexture> mTexturesManaged = new HashSet<ITexture>();
+	//tzl: 同一个纹理可能被load之后又unload或者unload之后又被load，如果每一次都进行一次IO，那么将会很耗时，所以在内存设置了几个缓冲列表
+	//虽然还没看到具体的代码，但我估计这个设计是会在某个回调统一把缓冲区的东西I/0到GPU中
+	private final HashSet<ITexture> mTexturesManaged = new HashSet<ITexture>();//tzl: 已经被管理的纹理?
 
-	private final ArrayList<ITexture> mTexturesLoaded = new ArrayList<ITexture>();
+	private final ArrayList<ITexture> mTexturesLoaded = new ArrayList<ITexture>();//tzl: 已经load的纹理
 
-	private final ArrayList<ITexture> mTexturesToBeLoaded = new ArrayList<ITexture>();
-	private final ArrayList<ITexture> mTexturesToBeUnloaded = new ArrayList<ITexture>();
+	private final ArrayList<ITexture> mTexturesToBeLoaded = new ArrayList<ITexture>();//tzl: 要被load但是还没被unload的纹理
+	private final ArrayList<ITexture> mTexturesToBeUnloaded = new ArrayList<ITexture>();//tzl: 要被unload但是还没被unload的纹理
 
 	// ===========================================================
 	// Constructors

@@ -82,7 +82,7 @@ import ru.nsu.ccfit.zuev.osuplus.R;
  * Created by Fuuko on 2015/4/24.
  */
 public class MainScene implements IUpdateHandler {
-    public SongProgressBar progressBar;
+    public SongProgressBar progressBar;//tzl: 进度条，是一个GameObject(osudroid自己封装的一个抽象类)
     public BeatmapInfo beatmapInfo;
     private Context context;
     private Sprite logo, logoOverlay, play, options, exit, background, lastBackground;
@@ -212,7 +212,7 @@ public class MainScene implements IUpdateHandler {
 //                    MainManager.getInstance().getMainActivity().startActivity(intent);
                     new AsyncTaskLoader().execute(new OsuAsyncCallback() {
                         public void run() {
-                            GlobalManager.getInstance().getEngine().setScene(new LoadingScreen().getScene());
+                            GlobalManager.getInstance().getEngine().setScene(new LoadingScreen().getScene());//tzl: engine set scene
                             GlobalManager.getInstance().getMainActivity().checkNewBeatmaps();
                             if (!LibraryManager.getInstance().loadLibraryCache(GlobalManager.getInstance().getMainActivity(), false)) {
                                 LibraryManager.getInstance().scanLibrary(GlobalManager.getInstance().getMainActivity());

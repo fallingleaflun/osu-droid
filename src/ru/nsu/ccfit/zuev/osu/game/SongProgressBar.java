@@ -9,6 +9,9 @@ import ru.nsu.ccfit.zuev.osu.RGBAColor;
 import ru.nsu.ccfit.zuev.osu.Utils;
 
 public class SongProgressBar extends GameObject {
+    //tzl: 用引擎画图
+
+    //tzl: 进度条主要就是下面这些东西就能描述了，当然还包括基类的那些最基本的属性
     private final Rectangle progressRect;
     private final Rectangle bgRect;
     private float time;
@@ -28,12 +31,12 @@ public class SongProgressBar extends GameObject {
             listener.addPassiveObject(this);
 
         bgRect = new Rectangle(pos.x, pos.y, width, height);
-        bgRect.setColor(0, 0, 0, 0.3f);
+        bgRect.setColor(0, 0, 0, 0.3f);//TODO:至此
         scene.attachChild(bgRect);
 
         progressRect = new Rectangle(bgRect.getX(), bgRect.getY(), 0,
                 bgRect.getHeight());
-        progressRect.setColor(153f / 255f, 204f / 255f, 51f / 255f);
+        progressRect.setColor(153f / 255f, 204f / 255f, 51f / 255f);//tzl: 注意!存在透明度的纹理会混合
         scene.attachChild(progressRect);
     }
 

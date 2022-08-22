@@ -101,14 +101,15 @@ public class MainActivity extends BaseGameActivity implements
         if (!checkPermissions()) {
             return null;
         }
+        //tzl: 为一些需要持有MainActitity的类传一堆this以完成初始化
         Config.loadConfig(this);
         initialGameDirectory();
         //Debug.setDebugLevel(Debug.DebugLevel.NONE);
         StringTable.setContext(this);
         ToastLogger.init(this);
         SyncTaskManager.getInstance().init(this);
-        InputManager.setContext(this);
-        // 初始化BuglySDK
+        InputManager.setContext(this);//TODO: 阅读至此
+        // tzl: 初始化BuglySDK
         Bugly.init(getApplicationContext(), "d1e89e4311", false);
         OnlineManager.getInstance().Init(getApplicationContext());
 
@@ -163,8 +164,8 @@ public class MainActivity extends BaseGameActivity implements
     private void initialGameDirectory() {
         File dir = new File(Config.getBeatmapPath());
         // Creating Osu directory if it doesn't exist
-        if (!dir.exists()) {
-            if (!dir.mkdirs()) {
+        if (!dir.exists()) {//tzl: 用户没有设置过路径
+            if (!dir.mkdirs()) {//tzl:
                 Config.setBeatmapPath(Config.getCorePath() + "Songs/");
                 dir = new File(Config.getBeatmapPath());
                 if (!(dir.exists() || dir.mkdirs())) {
@@ -180,7 +181,7 @@ public class MainActivity extends BaseGameActivity implements
                 }
 
             }
-            final File nomedia = new File(dir.getParentFile(), ".nomedia");
+            final File nomedia = new File(dir.getParentFile(), ".nomedia");//tzl: 不知道这个文件的意义
             try {
                 nomedia.createNewFile();
             } catch (final IOException e) {
@@ -410,7 +411,7 @@ public class MainActivity extends BaseGameActivity implements
                 ToastLogger.showText(
                         StringTable.get(R.string.message_lib_importing),
                         false);
-                if (OSZParser.parseOSZ(MainActivity.this, beatmapToAdd)) {
+                if (OSZParser.parseOSZ(MainActivity.this, beatmapToAdd)) {//tzl: 关键parser
                     String folderName = beatmapToAdd.substring(0, beatmapToAdd.length() - 4);
                     // We have imported the beatmap!
                     ToastLogger.showText(
@@ -580,7 +581,7 @@ public class MainActivity extends BaseGameActivity implements
             return;
         }
         if (GlobalManager.getInstance().getSkinNow() != null) {
-            if (GlobalManager.getInstance().getSkinNow() != Config.getSkinPath()) {
+            if (GlobalManager.getInstance().getSkinNow() != Config.getSkinPath()) {//tzl: 当前skin对不上配置
                 GlobalManager.getInstance().setSkinNow(Config.getSkinPath());
                 ToastLogger.showText(StringTable.get(R.string.message_loading_skin), true);
                 ResourceManager.getInstance().loadCustomSkin(Config.getSkinPath());

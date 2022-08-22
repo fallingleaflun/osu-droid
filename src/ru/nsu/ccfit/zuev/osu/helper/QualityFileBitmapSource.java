@@ -16,6 +16,7 @@ import java.io.InputStream;
 
 public class QualityFileBitmapSource extends BaseTextureAtlasSource implements
         IBitmapTextureAtlasSource {
+    //tzl: 一个用于把file读取为Bitmap的类，一个bitmap对应一个对象，而且读取的逻辑是调用preLoad()或者onLoadBitmap()才执行的
 
     private int mWidth;
     private int mHeight;
@@ -40,7 +41,8 @@ public class QualityFileBitmapSource extends BaseTextureAtlasSource implements
 
     public QualityFileBitmapSource(final File pFile,
                                    final int pTexturePositionX, final int pTexturePositionY) {
-        this(() -> new FileInputStream(pFile), pTexturePositionX, pTexturePositionY);
+        this(() -> new FileInputStream(pFile)//tzl: 实现了InputFactory接口的匿名类
+                , pTexturePositionX, pTexturePositionY);
     }
 
     public QualityFileBitmapSource(final InputFactory pFile,
@@ -49,6 +51,7 @@ public class QualityFileBitmapSource extends BaseTextureAtlasSource implements
 
         fileBitmapInput = pFile;
 
+        //tzl: 读取图片为bitmap
         final BitmapFactory.Options decodeOptions = new BitmapFactory.Options();
         decodeOptions.inJustDecodeBounds = true;
         decodeOptions.inSampleSize = inSampleSize;
@@ -56,7 +59,7 @@ public class QualityFileBitmapSource extends BaseTextureAtlasSource implements
         InputStream in = null;
         try {
             in = openInputStream();
-            BitmapFactory.decodeStream(in, null, decodeOptions);
+            BitmapFactory.decodeStream(in, null, decodeOptions);//tzl: 为什么不接收返回值?只是为了检测?是的
 
             this.mWidth = decodeOptions.outWidth;
             this.mHeight = decodeOptions.outHeight;
@@ -116,6 +119,7 @@ public class QualityFileBitmapSource extends BaseTextureAtlasSource implements
 
 
     public Bitmap onLoadBitmap(final Config pBitmapConfig) {
+        //tzl: 把文件流解码为Bitmap的代码在这里，但是这个是个回调，是因为不用是不需要加载，怕浪费内存?
         if (bitmap != null) {
             final Bitmap bmp = bitmap;
             bitmap = null;
@@ -146,7 +150,7 @@ public class QualityFileBitmapSource extends BaseTextureAtlasSource implements
     }
 
 
-    public interface InputFactory {
+    public interface InputFactory { //tzl: 看不懂这个工厂模式
         InputStream openInput() throws IOException;
     }
 

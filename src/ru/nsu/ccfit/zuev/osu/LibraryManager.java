@@ -43,6 +43,11 @@ public class LibraryManager {
     public File getLibraryCacheFile() {
         // sorry for the janky code
         return new File(GlobalManager.getInstance().getMainActivity().getFilesDir(), String.format("library.%s.dat", VERSION));
+        //tzl:需要了解一下安卓的文件存储知识
+        // getFilesDir()返回内部存储路径/data/data/<package name>/files/
+        // getCacheDir()返回内部存储路径/data/data/<package name>/cache/
+        // getExternalFilesDir(dir)返回外部存储路径 /mnt/sdcard/Android/data/<package name>/files/
+        // getExternalCacheDir()返回外部存储路径 /mnt/sdcard/Android/data/<package name>/cache/
     }
     
     @SuppressWarnings("unchecked")
@@ -135,6 +140,7 @@ public class LibraryManager {
     }
 
     private void checkLibrary(final Activity activity) {
+        //tzl: 检查缓存文件中谱面列表的信息与谱面路径下的文件是否一致
         final File dir = new File(Config.getBeatmapPath());
         final File[] files = dir.listFiles();
         if (files.length == fileCount) {
@@ -178,7 +184,7 @@ public class LibraryManager {
                         R.string.message_error_createdir, dir.getPath()), true);
                 return;
             }
-            final File nomedia = new File(dir.getParentFile(), ".nomedia");
+            final File nomedia = new File(dir.getParentFile(), ".nomedia");//tzl: “.nomedia”文件放在任何一个文件夹下都会把该文件夹下所有媒体文件（图片，mp3,视频）隐藏起来不会在系统图库，铃声中出现。
             try {
                 nomedia.createNewFile();
             } catch (final IOException e) {

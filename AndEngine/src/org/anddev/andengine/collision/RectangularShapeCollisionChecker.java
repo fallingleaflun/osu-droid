@@ -81,6 +81,7 @@ public class RectangularShapeCollisionChecker extends ShapeCollisionChecker {
 	}
 
 	public static void fillVertices(final RectangularShape pRectangularShape, final float[] pVertices) {
+		//tzl: 把pRectangularShape四个顶点的坐标从local坐标系变换到Scene坐标系并填充到pVertices中
 		final float left = 0;
 		final float top = 0;
 		final float right = pRectangularShape.getWidth();

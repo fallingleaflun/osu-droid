@@ -112,6 +112,7 @@ public abstract class RectangularShape extends Shape {
 
 	@Override
 	protected boolean isCulled(final Camera pCamera) { // TODO Advanced culling!
+		//tzl: 就是判断长方形是否在镜头外
 		final float x = this.mX;
 		final float y = this.mY;
 		return x > pCamera.getMaxX()
@@ -122,6 +123,7 @@ public abstract class RectangularShape extends Shape {
 
 	@Override
 	protected void drawVertices(final GL10 pGL, final Camera pCamera) {
+		//tzl: 关键代码，调用gl的绘制函数
 		pGL.glDrawArrays(GL10.GL_TRIANGLE_STRIP, 0, 4);
 	}
 
